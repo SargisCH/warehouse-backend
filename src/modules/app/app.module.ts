@@ -4,14 +4,15 @@ import { ConfigModule } from '@nestjs/config';
 
 import { UserModule } from '../user/user.module';
 import { PostModule } from '../post/post.module';
-// import { InventoryModule } from '../inventory/inventory.module';
+import { InventoryModule } from '../inventory/inventory.module';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { GLOBAL_CONFIG } from '../../configs/global.config';
 import { LoggerModule } from '../logger/logger.module';
+import { LoggerMiddleware } from '../../middlewares/logger.middleware';
+
 import { AppService } from './app.service';
 import { AppController } from './app.controller';
-import { LoggerMiddleware } from '../../middlewares/logger.middleware';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { LoggerMiddleware } from '../../middlewares/logger.middleware';
     AuthModule,
     UserModule,
     PostModule,
-    // InventoryModule,
+    InventoryModule,
     ConfigModule.forRoot({ isGlobal: true, load: [() => GLOBAL_CONFIG] }),
   ],
   controllers: [AppController],

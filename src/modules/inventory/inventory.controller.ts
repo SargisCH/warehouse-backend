@@ -1,13 +1,13 @@
 import {
   Controller,
   Get,
-  // Body,
+  Body,
   // Delete,
   // Param,
-  // Post,
+  Post,
   // Put,
 } from '@nestjs/common';
-import { Inventory } from '@prisma/client';
+import { Inventory as InventoryModel } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 
 import { InventoryService } from './inventory.service';
@@ -18,21 +18,8 @@ export class InventoryController {
   constructor(private inventoryService: InventoryService) {}
 
   @Get('/')
-  async getAllInventory(): Promise<Inventory[]> {
-    return [
-      {
-        id: 4,
-        amount: 1,
-        name: 'asdas',
-        amountUnit: 213.2,
-        created_at: 421342321 as unknown as Date,
-        updated_at: 421342321 as unknown as Date,
-        productId: null,
-        // amountUnit: 'kg',
-        // created_at: 123213,
-        // updated_at: Date.now(),
-      },
-    ];
+  async getAllInventory(): Promise<InventoryModel[]> {
+    return this.inventoryService.findAll({});
   }
 
   // @Get('post/:id')
@@ -65,19 +52,17 @@ export class InventoryController {
   //   });
   // }
 
-  // @Post('post')
-  // async createDraft(
-  //   @Body() postData: { title: string; content?: string; authorEmail: string },
-  // ): Promise<PostModel> {
-  //   const { title, content, authorEmail } = postData;
-  //   return this.postService.create({
-  //     title,
-  //     content,
-  //     User: {
-  //       connect: { email: authorEmail },
-  //     },
-  //   });
-  // }
+  @Post('inventory')
+  async createDraft(
+    @Body() postData: { name: string; amount?: number; amountUnit: string },
+  ): Promise<InventoryModel> {
+    const { name, amount, amountUnit } = postData;
+    return this.inventoryService.create({
+      name,
+      amount,
+      amountUnit,
+    });
+  }
 
   // @Put('publish/:id')
   // async publishPost(@Param('id') id: string): Promise<PostModel> {

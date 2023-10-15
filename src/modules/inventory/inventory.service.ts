@@ -32,11 +32,11 @@ export class InventoryService {
     });
   }
 
-  // async create(data: Prisma.PostCreateInput): Promise<Inventory> {
-  //   return this.prisma.inventory.create({
-  //     data,
-  //   });
-  // }
+  async create(data: Prisma.InventoryCreateInput): Promise<Inventory> {
+    return this.prisma.inventory.create({
+      data,
+    });
+  }
 
   async update(params: {
     where: Prisma.InventoryWhereUniqueInput;

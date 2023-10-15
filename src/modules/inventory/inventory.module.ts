@@ -8,7 +8,7 @@ import { InventoryController } from './inventory.controller';
 @Module({
   imports: [],
   controllers: [InventoryController],
-  providers: [InventoryController, PrismaService],
+  providers: [InventoryService, PrismaService],
   exports: [InventoryService],
 })
 export class InventoryModule {}

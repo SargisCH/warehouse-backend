@@ -28,7 +28,7 @@ model Inventory {
   id         Int      @id @default(autoincrement())
   name       String   @unique
   amount     Float
-  amountUnit Float
+  amountUnit String
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
   Product    Product? @relation(fields: [productId], references: [id])
