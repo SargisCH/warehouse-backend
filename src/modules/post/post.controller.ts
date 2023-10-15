@@ -19,7 +19,15 @@ export class PostController {
 
   @Get('/')
   async getAllPosts(): Promise<PostModel[]> {
-    return this.postService.findAll({});
+    return [
+      {
+        id: 4,
+        authorId: 4,
+        content: 'dasd',
+        title: 'dasda',
+        published: true,
+      },
+    ];
   }
 
   @Get('post/:id')
