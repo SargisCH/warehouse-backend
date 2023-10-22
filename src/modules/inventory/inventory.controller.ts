@@ -2,10 +2,10 @@ import {
   Controller,
   Get,
   Body,
-  // Delete,
-  // Param,
+  Delete,
+  Param,
   Post,
-  // Put,
+  Put,
 } from '@nestjs/common';
 import { Inventory as InventoryModel } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
@@ -22,10 +22,10 @@ export class InventoryController {
     return this.inventoryService.findAll({});
   }
 
-  // @Get('post/:id')
-  // async getPostById(@Param('id') id: string): Promise<Inventory> {
-  //   return this.inventoryService.findOne({ id: Number(id) });
-  // }
+  @Get('/:id')
+  async getInventoryById(@Param('id') id: string): Promise<InventoryModel> {
+    return this.inventoryService.findOne({ id: Number(id) });
+  }
 
   // @Get('feed')
   // async getPublishedPosts(): Promise<Inventory[]> {
@@ -52,28 +52,44 @@ export class InventoryController {
   //   });
   // }
 
-  @Post('inventory')
+  @Post('create')
   async createDraft(
-    @Body() postData: { name: string; amount?: number; amountUnit: string },
+    @Body()
+    postData: {
+      name: string;
+      amount?: number;
+      amountUnit: string;
+      price: number;
+    },
   ): Promise<InventoryModel> {
-    const { name, amount, amountUnit } = postData;
+    const { name, amount, amountUnit, price } = postData;
     return this.inventoryService.create({
       name,
       amount,
       amountUnit,
+      price,
     });
   }
 
-  // @Put('publish/:id')
-  // async publishPost(@Param('id') id: string): Promise<PostModel> {
-  //   return this.postService.update({
-  //     where: { id: Number(id) },
-  //     data: { published: true },
-  //   });
-  // }
+  @Put('/:id')
+  async editPost(
+    @Param('id') id: string,
+    @Body()
+    inventoryData: {
+      name: string;
+      amount?: number;
+      amountUnit: string;
+      price: number;
+    },
+  ): Promise<InventoryModel> {
+    return this.inventoryService.update({
+      where: { id: Number(id) },
+      data: inventoryData,
+    });
+  }
 
-  // @Delete('post/:id')
-  // async deletePost(@Param('id') id: string): Promise<PostModel> {
-  //   return this.postService.delete({ id: Number(id) });
-  // }
+  @Delete('/:id')
+  async deleteInventory(@Param('id') id: string): Promise<InventoryModel> {
+    return this.inventoryService.delete({ id: Number(id) });
+  }
 }
