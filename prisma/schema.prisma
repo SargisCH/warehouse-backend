@@ -25,16 +25,16 @@ model User {
 }
 
 model Inventory {
-  id         Int      @id @default(autoincrement())
-  name       String   @unique
+  id         Int          @id @default(autoincrement())
+  name       String       @unique
   amount     Float
   amountUnit String
-  price      Float    @default(0)
-  currency   String   @default("AMD")
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  Product    Product? @relation(fields: [productId], references: [id])
-  productId  Int?
+  price      Float        @default(0)
+  currency   String       @default("AMD")
+  created_at DateTime     @default(now())
+  updated_at DateTime     @updatedAt
+  //Ingredient Ingredient?
+  Ingredient Ingredient[]
 }
 
 model Customer {
@@ -57,11 +57,26 @@ model TradeCredit {
 }
 
 model Product {
-  id          Int         @id @default(autoincrement())
-  name        String      @unique
-  ingredients Inventory[]
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  ingredients Ingredient[]
   price       Float
   priceUnit   String
-  created_at  DateTime    @default(now())
-  updated_at  DateTime    @updatedAt
+  inStock     Float
+  inStockUnit String
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
+}
+
+model Ingredient {
+  product     Product   @relation(fields: [productId], references: [id])
+  productId   Int
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  inventoryId Int
+  amount      Float
+  amountUnit  String
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  @@id([productId, inventoryId])
 }
