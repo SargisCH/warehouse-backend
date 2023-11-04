@@ -6,6 +6,7 @@ import { UserModule } from '../user/user.module';
 import { PostModule } from '../post/post.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { ProductModule } from '../product/product.module';
+import { InventorySupplierModule } from '../inventorySupplier/inventorySupplier.module';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { GLOBAL_CONFIG } from '../../configs/global.config';
@@ -24,6 +25,7 @@ import { AppController } from './app.controller';
     PostModule,
     InventoryModule,
     ProductModule,
+    InventorySupplierModule,
     ConfigModule.forRoot({ isGlobal: true, load: [() => GLOBAL_CONFIG] }),
   ],
   controllers: [AppController],

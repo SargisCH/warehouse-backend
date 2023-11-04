@@ -25,16 +25,17 @@ model User {
 }
 
 model Inventory {
-  id         Int          @id @default(autoincrement())
-  name       String       @unique
-  amount     Float
-  amountUnit String
-  price      Float        @default(0)
-  currency   String       @default("AMD")
-  created_at DateTime     @default(now())
-  updated_at DateTime     @updatedAt
+  id                     Int                      @id @default(autoincrement())
+  name                   String                   @unique
+  amount                 Float
+  amountUnit             String
+  price                  Float                    @default(0)
+  currency               String                   @default("AMD")
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime                 @updatedAt
   //Ingredient Ingredient?
-  Ingredient Ingredient[]
+  Ingredient             Ingredient[]
+  InventorySupplierOrder InventorySupplierOrder[]
 }
 
 model Customer {
@@ -79,4 +80,29 @@ model Ingredient {
   updated_at  DateTime  @updatedAt
 
   @@id([productId, inventoryId])
+}
+
+model InventorySupplier {
+  id         Int                      @id @default(autoincrement())
+  name       String                   @unique
+  created_at DateTime                 @default(now())
+  updated_at DateTime                 @updatedAt
+  orders     InventorySupplierOrder[]
+  deleted    Boolean                  @default(false)
+}
+
+model InventorySupplierOrder {
+  id                  Int               @id @default(autoincrement())
+  inventirySupplier   InventorySupplier @relation(fields: [inventirySupplierId], references: [id])
+  inventirySupplierId Int
+  inventory           Inventory         @relation(fields: [inventoryId], references: [id])
+  inventoryId         Int
+  price               Float
+  priceUnit           String
+  amount              Float
+  amountUnit          String
+  orderDate           DateTime          @default(now())
+  status              String?           @default("")
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
 }

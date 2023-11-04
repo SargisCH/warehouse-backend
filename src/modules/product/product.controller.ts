@@ -123,7 +123,16 @@ export class ProductController {
   }
 
   @Delete('/:id')
-  async deleteProduct(@Param('id') id: string): Promise<ProductModel> {
-    return this.productService.delete({ id: Number(id) });
+  async deleteProduct(@Param('id') id: string): Promise<{ message: string }> {
+    await this.productService.deleteIngredients({ productId: Number(id) });
+    const deletedCount = await this.productService.delete({ id: Number(id) });
+
+    if (deletedCount) {
+      return {
+        message: 'Product delted successfully',
+      };
+    } else {
+      return { message: 'Product deletion failed' };
+    }
   }
 }

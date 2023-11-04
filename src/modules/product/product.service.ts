@@ -51,9 +51,13 @@ export class ProductService {
     });
   }
 
-  async delete(where: Prisma.ProductWhereUniqueInput): Promise<Product> {
-    return this.prisma.product.delete({
+  async delete(where: Prisma.ProductWhereUniqueInput): Promise<number> {
+    const res = await this.prisma.product.deleteMany({
       where,
     });
+    return res.count;
+  }
+  async deleteIngredients(where: Prisma.IngredientWhereInput): Promise<number> {
+    return (await this.prisma.ingredient.deleteMany({ where })).count;
   }
 }
