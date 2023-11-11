@@ -25,17 +25,17 @@ model User {
 }
 
 model Inventory {
-  id                     Int                      @id @default(autoincrement())
-  name                   String                   @unique
-  amount                 Float
-  amountUnit             String
-  price                  Float                    @default(0)
-  currency               String                   @default("AMD")
-  created_at             DateTime                 @default(now())
-  updated_at             DateTime                 @updatedAt
+  id                         Int                          @id @default(autoincrement())
+  name                       String                       @unique
+  amount                     Float
+  amountUnit                 String
+  price                      Float                        @default(0)
+  currency                   String                       @default("AMD")
+  created_at                 DateTime                     @default(now())
+  updated_at                 DateTime                     @updatedAt
   //Ingredient Ingredient?
-  Ingredient             Ingredient[]
-  InventorySupplierOrder InventorySupplierOrder[]
+  Ingredient                 Ingredient[]
+  InventorySupplierOrderItem InventorySupplierOrderItem[]
 }
 
 model Customer {
@@ -92,17 +92,26 @@ model InventorySupplier {
 }
 
 model InventorySupplierOrder {
-  id                  Int               @id @default(autoincrement())
-  inventirySupplier   InventorySupplier @relation(fields: [inventirySupplierId], references: [id])
-  inventirySupplierId Int
-  inventory           Inventory         @relation(fields: [inventoryId], references: [id])
-  inventoryId         Int
-  price               Float
-  priceUnit           String
-  amount              Float
-  amountUnit          String
-  orderDate           DateTime          @default(now())
-  status              String?           @default("")
-  created_at          DateTime          @default(now())
-  updated_at          DateTime          @updatedAt
+  id                  Int                          @id @default(autoincrement())
+  inventorySupplier   InventorySupplier            @relation(fields: [inventorySupplierId], references: [id])
+  inventorySupplierId Int
+  orderDate           DateTime                     @default(now())
+  status              String?                      @default("")
+  created_at          DateTime                     @default(now())
+  updated_at          DateTime                     @updatedAt
+  orderItems          InventorySupplierOrderItem[]
+}
+
+model InventorySupplierOrderItem {
+  id                       Int                    @id @default(autoincrement())
+  inventorySupplierOrder   InventorySupplierOrder @relation(fields: [inventorySupplierOrderId], references: [id])
+  inventorySupplierOrderId Int
+  inventory                Inventory              @relation(fields: [inventoryId], references: [id])
+  inventoryId              Int
+  price                    Float
+  priceUnit                String
+  amount                   Float
+  amountUnit               String
+  created_at               DateTime               @default(now())
+  updated_at               DateTime               @updatedAt
 }

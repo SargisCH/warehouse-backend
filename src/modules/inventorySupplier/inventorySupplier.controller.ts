@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import {
   Controller,
   Get,
@@ -7,7 +8,10 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
-import { InventorySupplier as InventorySupplierModel } from '@prisma/client';
+import {
+  InventorySupplier as InventorySupplierModel,
+  InventorySupplierOrder as InventorySupplierOrderModel,
+} from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 
 import { InventorySupplierService } from './inventorySupplier.service';
@@ -102,42 +106,119 @@ export class InventorySupplierController {
       return { message: 'Inventory supplier deletion failed' };
     }
   }
+
   @Post('/:id/order/create')
   async createOrder(
     @Param('id') id: string,
     @Body()
     supplierOrder: {
-      inventory: Array<{
-        id: number;
+      supplierId: number;
+      orderDate: Date;
+      status: string;
+      orderItems: Array<{
+        inventoryId: number;
         amount: number;
         amountUnit: string;
         price: number;
         priceUnit: string;
-        orderDate: Date;
       }>;
     },
-  ): Promise<Array<InventorySupplierModel>> {
-    const { inventory } = supplierOrder;
+  ): Promise<InventorySupplierOrderModel> {
+    const { orderDate, status, orderItems } = supplierOrder;
 
-    if (!inventory.length) throw new Error('At least one order is required');
-    const addedCount = await this.inventorySupplierService.createOrderMany(
-      inventory.map((inv) => ({
-        inventirySupplierId: Number(id),
-        inventoryId: inv.id,
-        amount: inv.amount,
-        amountUnit: inv.amountUnit,
-        price: inv.price,
-        priceUnit: inv.priceUnit,
-      })),
+    if (!orderItems.length) throw new Error('At least one order is required');
+    const inventorySupplier = await this.inventorySupplierService.createOrder({
+      inventorySupplier: {
+        connect: { id: Number(id) },
+      },
+      orderDate: dayjs(orderDate, 'YYYY-MM-DD').toDate(),
+      status,
+      orderItems: {
+        createMany: {
+          data: orderItems.map((item) => ({
+            inventoryId: item.inventoryId,
+            amount: item.amount,
+            amountUnit: item.amountUnit,
+            price: item.price,
+            priceUnit: item.priceUnit,
+          })),
+        },
+      },
+    });
+
+    return inventorySupplier;
+  }
+  @Get('/:id/order')
+  async getInventorySupplierOrder(
+    @Param('id') id: string,
+  ): Promise<InventorySupplierOrderModel[]> {
+    return this.inventorySupplierService.findOrder({
+      inventorySupplierId: Number(id),
+    });
+  }
+
+  @Put('/:id/order/:orderId')
+  async upadateOrder(
+    @Param('id') id: string,
+    @Param('orderId') orderId: string,
+    @Body()
+    supplierOrder: {
+      supplierId: number;
+      orderDate: Date;
+      status: string;
+      orderItems: Array<{
+        id?: number;
+        inventoryId: number;
+        amount: number;
+        amountUnit: string;
+        price: number;
+        priceUnit: string;
+      }>;
+    },
+  ): Promise<InventorySupplierOrderModel> {
+    const { orderDate, status, orderItems } = supplierOrder;
+
+    if (!orderItems.length) throw new Error('At least one order is required');
+    const inventorySupplier = await this.inventorySupplierService.updateOrder(
+      {
+        id: Number(orderId),
+      },
+      {
+        orderDate: dayjs(orderDate, 'YYYY-MM-DD').toDate(),
+        status,
+        orderItems: {
+          updateMany: orderItems.map((item) => ({
+            where: { id: Number(item.id) },
+            data: {
+              inventoryId: item.inventoryId,
+              amount: item.amount,
+              amountUnit: item.amountUnit,
+              price: item.price,
+              priceUnit: item.priceUnit,
+            },
+          })),
+        },
+      },
     );
 
-    if (addedCount > 0) {
-      return this.inventorySupplierService.findAll(
-        {
-          where: { id: Number(id) },
-        },
-        true,
-      );
+    return inventorySupplier;
+  }
+
+  @Delete('/:id/order/:orderId')
+  async deleteInventorySupplierOrder(
+    @Param('id') id: string,
+    @Param('orderId') orderId: string,
+  ): Promise<{ message: string }> {
+    const deletedCount = await this.inventorySupplierService.deleteOrder({
+      id: Number(orderId),
+    });
+
+    if (deletedCount) {
+      return {
+        message: 'Inventory Supplier Order deleted successfully',
+      };
+    } else {
+      return { message: 'Inventory supplier Order deletion failed' };
     }
   }
 }

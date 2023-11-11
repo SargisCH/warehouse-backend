@@ -73,13 +73,50 @@ export class InventorySupplierService {
   async createOrder(
     data: Prisma.InventorySupplierOrderCreateInput,
   ): Promise<InventorySupplierOrder> {
-    return this.prisma.inventorySupplierOrder.create({ data });
+    return this.prisma.inventorySupplierOrder.create({
+      data,
+      include: {
+        inventorySupplier: true,
+        orderItems: { include: { inventory: true } },
+      },
+    });
   }
 
   async createOrderMany(
     data: Array<Prisma.InventorySupplierOrderCreateManyInput>,
   ): Promise<number> {
     const res = await this.prisma.inventorySupplierOrder.createMany({ data });
+    return res.count;
+  }
+
+  async findOrder(
+    inventorySupplierOrderWhereInput: Prisma.InventorySupplierOrderWhereInput,
+  ): Promise<InventorySupplierOrder[] | null> {
+    return this.prisma.inventorySupplierOrder.findMany({
+      where: inventorySupplierOrderWhereInput,
+      include: { orderItems: { include: { inventory: true } } },
+    });
+  }
+
+  async updateOrder(
+    where: Prisma.InventorySupplierOrderWhereUniqueInput,
+    data: Prisma.InventorySupplierOrderUpdateInput,
+  ): Promise<InventorySupplierOrder> {
+    return this.prisma.inventorySupplierOrder.update({
+      where,
+      data,
+      include: {
+        inventorySupplier: true,
+        orderItems: { include: { inventory: true } },
+      },
+    });
+  }
+  async deleteOrder(
+    where: Prisma.InventorySupplierOrderWhereUniqueInput,
+  ): Promise<number> {
+    const res = await this.prisma.inventorySupplierOrder.deleteMany({
+      where,
+    });
     return res.count;
   }
 }
