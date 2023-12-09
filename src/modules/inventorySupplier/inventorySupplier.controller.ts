@@ -11,6 +11,7 @@ import {
 import {
   InventorySupplier as InventorySupplierModel,
   InventorySupplierOrder as InventorySupplierOrderModel,
+  InventorySupplierOrderItem,
 } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -20,6 +21,13 @@ import { InventorySupplierService } from './inventorySupplier.service';
 @Controller('/inventorySupplier')
 export class InventorySupplierController {
   constructor(private inventorySupplierService: InventorySupplierService) {}
+
+  @Get('/order')
+  async getAllInventorySupplierOrders(): Promise<
+    InventorySupplierOrderModel[]
+  > {
+    return this.inventorySupplierService.findOrderMany();
+  }
 
   @Get('/')
   async getAllInventorySuppliers(): Promise<InventorySupplierModel[]> {
@@ -112,7 +120,6 @@ export class InventorySupplierController {
     @Param('id') id: string,
     @Body()
     supplierOrder: {
-      supplierId: number;
       orderDate: Date;
       status: string;
       orderItems: Array<{
@@ -145,25 +152,16 @@ export class InventorySupplierController {
         },
       },
     });
+    await this.inventorySupplierService.syncInventory(orderItems);
 
     return inventorySupplier;
   }
-  @Get('/:id/order')
-  async getInventorySupplierOrder(
-    @Param('id') id: string,
-  ): Promise<InventorySupplierOrderModel[]> {
-    return this.inventorySupplierService.findOrder({
-      inventorySupplierId: Number(id),
-    });
-  }
-
   @Put('/:id/order/:orderId')
-  async upadateOrder(
+  async updateOrder(
     @Param('id') id: string,
     @Param('orderId') orderId: string,
     @Body()
     supplierOrder: {
-      supplierId: number;
       orderDate: Date;
       status: string;
       orderItems: Array<{
@@ -184,11 +182,13 @@ export class InventorySupplierController {
         id: Number(orderId),
       },
       {
-        orderDate: dayjs(orderDate, 'YYYY-MM-DD').toDate(),
+        orderDate,
         status,
         orderItems: {
           updateMany: orderItems.map((item) => ({
-            where: { id: Number(item.id) },
+            where: {
+              inventoryId: item.inventoryId,
+            },
             data: {
               inventoryId: item.inventoryId,
               amount: item.amount,
@@ -203,12 +203,33 @@ export class InventorySupplierController {
 
     return inventorySupplier;
   }
+  @Get('/:id/order')
+  async getInventorySupplierOrder(
+    @Param('id') id: string,
+  ): Promise<InventorySupplierOrderModel[]> {
+    return this.inventorySupplierService.findOrder({
+      inventorySupplierId: Number(id),
+    });
+  }
+
+  @Get('/:id/order/:orderId')
+  async getOrderbyId(
+    @Param('id') id: string,
+    @Param('orderId') orderId: string,
+  ): Promise<InventorySupplierOrderModel> {
+    return this.inventorySupplierService.findOrderById({
+      id: Number(orderId),
+    });
+  }
 
   @Delete('/:id/order/:orderId')
   async deleteInventorySupplierOrder(
     @Param('id') id: string,
     @Param('orderId') orderId: string,
   ): Promise<{ message: string }> {
+    await this.inventorySupplierService.deleteOrderItems({
+      inventorySupplierOrderId: Number(orderId),
+    });
     const deletedCount = await this.inventorySupplierService.deleteOrder({
       id: Number(orderId),
     });
@@ -220,5 +241,15 @@ export class InventorySupplierController {
     } else {
       return { message: 'Inventory supplier Order deletion failed' };
     }
+  }
+
+  @Get('/:id/inventory/:inventoryId/latest')
+  async getLatestOrderDetails(
+    @Param('id') id: string,
+    @Param('inventoryId') inventoryId: string,
+  ): Promise<{ orderItem: InventorySupplierOrderItem | undefined }> {
+    return this.inventorySupplierService.getLatestOrderDetails(
+      Number(inventoryId),
+    );
   }
 }
