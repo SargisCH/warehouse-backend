@@ -16,11 +16,4 @@ export class UserController {
   async getAll(): Promise<User[]> {
     return this.userService.users({});
   }
-
-  @Post('user')
-  async signupUser(
-    @Body() userData: { name?: string; email: string; password: string },
-  ): Promise<User> {
-    return this.userService.createUser(userData);
-  }
 }

@@ -1,7 +1,8 @@
 import { Prisma, User } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
-
+import AWS_SDK from 'aws-sdk';
 import { PrismaService } from '../prisma/prisma.service';
+import { RegisterUserDTO } from '../auth/auth.dto';
 
 @Injectable()
 export class UserService {
@@ -32,9 +33,22 @@ export class UserService {
     });
   }
 
-  async createUser(data: Prisma.UserCreateInput): Promise<User> {
+  async createUser(data: RegisterUserDTO): Promise<User> {
+    const cognito = new AWS_SDK.CognitoIdentityServiceProvider({
+      region: 'us-east-1',
+    });
+
+    const params = {
+      ClientId: 'ngltvt3dbqp86piipjoeic9cc', // tenant client id
+      Username: data.email,
+      Password: data.password,
+    };
+    const tenant = await this.prisma.tenant.create({
+      data: { name: data.companyName },
+    });
+    await cognito.signUp(params).promise();
     return this.prisma.user.create({
-      data,
+      data: { ...data, tenantId: tenant.id },
     });
   }
 

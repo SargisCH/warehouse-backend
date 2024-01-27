@@ -3,7 +3,6 @@ import { MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
 import { UserModule } from '../user/user.module';
-import { PostModule } from '../post/post.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { ProductModule } from '../product/product.module';
 import { InventorySupplierModule } from '../inventorySupplier/inventorySupplier.module';
@@ -22,7 +21,6 @@ import { AppController } from './app.controller';
     PrismaModule,
     AuthModule,
     UserModule,
-    PostModule,
     InventoryModule,
     ProductModule,
     InventorySupplierModule,

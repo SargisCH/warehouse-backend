@@ -6,7 +6,7 @@ import { UserService } from '../user/user.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthHelpers } from '../../shared/helpers/auth.helpers';
 import { GLOBAL_CONFIG } from '../../configs/global.config';
-
+import AWS_SDK from 'aws-sdk';
 import { AuthResponseDTO, LoginUserDTO, RegisterUserDTO } from './auth.dto';
 
 @Injectable()
@@ -37,9 +37,10 @@ export class AuthService {
 
     const payload = {
       id: userData.id,
-      name: userData.name,
       email: userData.email,
       password: null,
+      tenantId: userData.tenantId,
+      companyName: userData.companyName,
       // role: userData.role,
     };
 
@@ -54,5 +55,23 @@ export class AuthService {
   }
   public async register(user: RegisterUserDTO): Promise<User> {
     return this.userService.createUser(user);
+  }
+  public async verifyEmail({
+    email,
+    code,
+  }: {
+    email: string;
+    code: string | number;
+  }): Promise<{ verified: boolean }> {
+    const cognito = new AWS_SDK.CognitoIdentityServiceProvider({
+      region: 'us-east-1',
+    });
+    const params = {
+      ClientId: 'ngltvt3dbqp86piipjoeic9cc', // tenant client id
+      ConfirmationCode: String(code), // Replace with the actual code sent to the user
+      Username: email,
+    };
+    await cognito.confirmSignUp(params).promise();
+    return { verified: true };
   }
 }

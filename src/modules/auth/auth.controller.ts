@@ -37,6 +37,13 @@ export class AuthController {
     return this.authService.register(user);
   }
 
+  @Post('verify-email')
+  async verifyEmail(
+    @Body() verifyData: { email: string; code: string | number },
+  ): Promise<{ verified: boolean }> {
+    return this.authService.verifyEmail(verifyData);
+  }
+
   @Post('logout')
   logout(@Response() res): void {
     res.clearCookie('accessToken');
