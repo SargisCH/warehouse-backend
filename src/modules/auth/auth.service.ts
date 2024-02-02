@@ -1,12 +1,14 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
+import { User as UserModel } from '@prisma/client';
+import AWS_SDK from 'aws-sdk';
 
+import { GLOBAL_CONFIG } from '../../configs/global.config';
 import { UserService } from '../user/user.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthHelpers } from '../../shared/helpers/auth.helpers';
-import { GLOBAL_CONFIG } from '../../configs/global.config';
-import AWS_SDK from 'aws-sdk';
+
 import { AuthResponseDTO, LoginUserDTO, RegisterUserDTO } from './auth.dto';
 
 @Injectable()
@@ -73,5 +75,14 @@ export class AuthService {
     };
     await cognito.confirmSignUp(params).promise();
     return { verified: true };
+  }
+
+  public async getUser(email: string): Promise<Omit<UserModel, 'password'>> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email },
+      include: { tenant: true },
+    });
+    delete user.password;
+    return user;
   }
 }
