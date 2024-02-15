@@ -7,6 +7,8 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import {
   InventorySupplier as InventorySupplierModel,
@@ -14,6 +16,8 @@ import {
   InventorySupplierOrderItem,
 } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
+
+import { AuthGuard } from '../../modules/auth/auth.guard';
 
 import { InventorySupplierService } from './inventorySupplier.service';
 
@@ -30,7 +34,10 @@ export class InventorySupplierController {
   }
 
   @Get('/')
-  async getAllInventorySuppliers(): Promise<InventorySupplierModel[]> {
+  @UseGuards(AuthGuard)
+  async getAllInventorySuppliers(
+    @Req() request: Request,
+  ): Promise<InventorySupplierModel[]> {
     return this.inventorySupplierService.findAll({ where: { deleted: false } });
   }
 

@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "Inventory" ADD COLUMN     "price" DOUBLE PRECISION NOT NULL DEFAULT 0;

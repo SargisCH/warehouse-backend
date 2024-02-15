@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum TransactionType {
+  IN
+  OUT
+}
+
 model User {
   id          Int     @id @default(autoincrement())
   email       String  @unique
@@ -17,9 +22,36 @@ model User {
 }
 
 model Tenant {
-  id   Int    @id @default(autoincrement())
-  name String
-  User User[]
+  id                 Int                  @id @default(autoincrement())
+  name               String
+  User               User[]
+  balance            Float                @default(0)
+  Credit             Credit?              @relation(fields: [creditId], references: [id])
+  creditId           Int?
+  TransactionHistory TransactionHistory[]
+}
+
+model TransactionHistory {
+  id              Int                     @id @default(autoincrement())
+  tenant          Tenant                  @relation(fields: [tenantId], references: [id])
+  tenantId        Int
+  transactionType TransactionType
+  amount          Float
+  sale            Sale?                   @relation(fields: [saleId], references: [id])
+  saleId          Int?
+  order           InventorySupplierOrder? @relation(fields: [orderId], references: [id])
+  orderId         Int?
+}
+
+model Credit {
+  id       Int      @id @default(autoincrement())
+  amount   Int
+  sale     Sale     @relation(fields: [saleId], references: [id])
+  saleId   Int      @unique
+  currency String?  @default("AMD")
+  Tenant   Tenant[]
+  client   Client   @relation(fields: [clientId], references: [id])
+  clientId Int
 }
 
 model Inventory {
@@ -34,6 +66,7 @@ model Inventory {
   //Ingredient Ingredient?
   Ingredient                 Ingredient[]
   InventorySupplierOrderItem InventorySupplierOrderItem[]
+  SaleItem                   SaleItem[]
 }
 
 model Customer {
@@ -65,6 +98,14 @@ model Product {
   inStockUnit String
   created_at  DateTime     @default(now())
   updated_at  DateTime     @updatedAt
+  SaleItem    SaleItem[]
+}
+
+model ProductCategory {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }
 
 model Ingredient {
@@ -78,6 +119,28 @@ model Ingredient {
   updated_at  DateTime  @updatedAt
 
   @@id([productId, inventoryId])
+}
+
+model Client {
+  id                Int        @id @default(autoincrement())
+  name              String     @unique
+  companyCode       String
+  companyType       String
+  companyId         String
+  accountNumber     String
+  bankAccountNumber String
+  legalAddress      String
+  address           String
+  phoneNumber       String
+  otherPhoneNumber  String
+  email             String
+  contactPerson     String
+  taxId             String
+  created_at        DateTime   @default(now())
+  updated_at        DateTime   @updatedAt
+  Sale              Sale[]
+  SaleItem          SaleItem[]
+  Credit            Credit[]
 }
 
 model InventorySupplier {
@@ -98,6 +161,8 @@ model InventorySupplierOrder {
   created_at          DateTime                     @default(now())
   updated_at          DateTime                     @updatedAt
   orderItems          InventorySupplierOrderItem[]
+  SaleItem            SaleItem[]
+  TransactionHistory  TransactionHistory[]
 }
 
 model InventorySupplierOrderItem {
@@ -112,4 +177,37 @@ model InventorySupplierOrderItem {
   amountUnit               String
   created_at               DateTime               @default(now())
   updated_at               DateTime               @updatedAt
+}
+
+model Sale {
+  id                  Int                  @id @default(autoincrement())
+  client              Client               @relation(fields: [clientId], references: [id])
+  clientId            Int
+  created_at          DateTime             @default(now())
+  updated_at          DateTime             @updatedAt
+  saleItems           SaleItem[]
+  Credit              Credit?
+  partialCreditAmount Int                  @default(0)
+  paymentType         String               @default("")
+  TransactionHistory  TransactionHistory[]
+}
+
+model SaleItem {
+  id                       Int                     @id @default(autoincrement())
+  product                  Product                 @relation(fields: [productId], references: [id])
+  productId                Int
+  price                    Float
+  priceUnit                String
+  amount                   Float
+  amountUnit               String
+  sale                     Sale                    @relation(fields: [saleId], references: [id])
+  saleId                   Int
+  created_at               DateTime                @default(now())
+  updated_at               DateTime                @updatedAt
+  Inventory                Inventory?              @relation(fields: [inventoryId], references: [id])
+  inventoryId              Int?
+  Client                   Client?                 @relation(fields: [clientId], references: [id])
+  clientId                 Int?
+  InventorySupplierOrder   InventorySupplierOrder? @relation(fields: [inventorySupplierOrderId], references: [id])
+  inventorySupplierOrderId Int?
 }

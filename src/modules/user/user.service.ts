@@ -1,6 +1,7 @@
 import { Prisma, User } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import AWS_SDK from 'aws-sdk';
+
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterUserDTO } from '../auth/auth.dto';
 

@@ -14,6 +14,9 @@ import { LoggerMiddleware } from '../../middlewares/logger.middleware';
 
 import { AppService } from './app.service';
 import { AppController } from './app.controller';
+import { ProductCategoryModule } from '../productCategory/productCategory.module';
+import { SaleModule } from '../sale/sale.module';
+import { ClientModule } from '../client/client.module';
 
 @Module({
   imports: [
@@ -24,6 +27,9 @@ import { AppController } from './app.controller';
     InventoryModule,
     ProductModule,
     InventorySupplierModule,
+    ProductCategoryModule,
+    SaleModule,
+    ClientModule,
     ConfigModule.forRoot({ isGlobal: true, load: [() => GLOBAL_CONFIG] }),
   ],
   controllers: [AppController],

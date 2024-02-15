@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Sale, Prisma } from '@prisma/client';
+import { Sale, Prisma, User } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -44,6 +44,7 @@ export class SaleService {
     orderBy?: Prisma.SaleOrderByWithRelationInput;
   }): Promise<Sale[]> {
     const { skip, take, cursor, where, orderBy } = params;
+
     return this.prisma.sale.findMany({
       skip,
       take,
@@ -54,7 +55,7 @@ export class SaleService {
     });
   }
 
-  async create(data: SaleAPIType): Promise<Sale> {
+  async create(data: SaleAPIType, user: User): Promise<Sale> {
     const productCounts: Array<{ id: number; amount: number }> =
       data.saleItems.map((si) => ({ id: si.productId, amount: si.amount }));
 
@@ -105,6 +106,34 @@ export class SaleService {
           saleId: saleCreated.id,
           clientId: data.clientId,
           amount: creditAmount,
+        },
+      });
+    } else if (data.paymentType === PaymentTypeEnum.CASH) {
+      const totalAmount = data.saleItems.reduce(
+        (acc, s) => s.price * s.amount + acc,
+        0,
+      );
+      const { tenantId } = user;
+      await this.prisma.tenant.update({
+        where: { id: tenantId },
+        data: { balance: { increment: totalAmount } },
+      });
+    } else if (data.paymentType === PaymentTypeEnum.PARTIAL_CREDIT) {
+      const totalAmount = data.saleItems.reduce(
+        (acc, s) => s.price * s.amount + acc,
+        0,
+      );
+
+      if (!data.partialCreditAmount) {
+        throw new Error(
+          'The partial credit amount is mandatory when partial credit is selected as a payment method',
+        );
+      }
+      const { tenantId } = user;
+      await this.prisma.tenant.update({
+        where: { id: tenantId },
+        data: {
+          balance: { increment: totalAmount - data.partialCreditAmount },
         },
       });
     }

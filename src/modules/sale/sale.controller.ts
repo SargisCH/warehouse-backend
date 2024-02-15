@@ -6,9 +6,13 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
-import { Sale as SaleModel, Prisma } from '@prisma/client';
+import { Sale as SaleModel, Prisma, User } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
+
+import { AuthGuard } from '../auth/auth.guard';
 
 import { SaleAPIType, SaleService } from './sale.service';
 
@@ -26,12 +30,14 @@ export class SaleController {
     return this.saleService.findOne({ id: Number(id) });
   }
 
+  @UseGuards(AuthGuard)
   @Post('create')
   async createDraft(
+    @Req() request: Request,
     @Body()
     saleData: SaleAPIType,
   ): Promise<SaleModel> {
-    return this.saleService.create(saleData);
+    return this.saleService.create(saleData, (request as any).user as User);
   }
 
   @Put('/:id')
