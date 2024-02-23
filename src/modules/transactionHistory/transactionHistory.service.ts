@@ -1,0 +1,35 @@
+import { Injectable } from '@nestjs/common';
+import { Prisma, TransactionHistory } from '@prisma/client';
+
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class TransactionHistoryService {
+  constructor(private prisma: PrismaService) {}
+
+  async findOne(
+    transactionHistoryWhereUniqueInput: Prisma.TransactionHistoryWhereUniqueInput,
+  ): Promise<TransactionHistory | null> {
+    return this.prisma.transactionHistory.findUnique({
+      where: transactionHistoryWhereUniqueInput,
+    });
+  }
+
+  async findAll(params: {
+    skip?: number;
+    take?: number;
+    cursor?: Prisma.TransactionHistoryWhereUniqueInput;
+    where?: Prisma.TransactionHistoryWhereInput;
+    orderBy?: Prisma.TransactionHistoryOrderByWithRelationInput;
+  }): Promise<TransactionHistory[]> {
+    const { skip, take, cursor, where, orderBy } = params;
+    return this.prisma.transactionHistory.findMany({
+      skip,
+      take,
+      cursor,
+      where,
+      orderBy,
+      include: { sale: true, client: true },
+    });
+  }
+}

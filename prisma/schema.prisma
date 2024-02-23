@@ -26,9 +26,9 @@ model Tenant {
   name               String
   User               User[]
   balance            Float                @default(0)
+  TransactionHistory TransactionHistory[]
   Credit             Credit?              @relation(fields: [creditId], references: [id])
   creditId           Int?
-  TransactionHistory TransactionHistory[]
 }
 
 model TransactionHistory {
@@ -41,6 +41,8 @@ model TransactionHistory {
   saleId          Int?
   order           InventorySupplierOrder? @relation(fields: [orderId], references: [id])
   orderId         Int?
+  client          Client                  @relation(fields: [clientId], references: [id])
+  clientId        Int
 }
 
 model Credit {
@@ -49,9 +51,10 @@ model Credit {
   sale     Sale     @relation(fields: [saleId], references: [id])
   saleId   Int      @unique
   currency String?  @default("AMD")
-  Tenant   Tenant[]
+  tenantId Int
   client   Client   @relation(fields: [clientId], references: [id])
   clientId Int
+  Tenant   Tenant[]
 }
 
 model Inventory {
@@ -122,25 +125,26 @@ model Ingredient {
 }
 
 model Client {
-  id                Int        @id @default(autoincrement())
-  name              String     @unique
-  companyCode       String
-  companyType       String
-  companyId         String
-  accountNumber     String
-  bankAccountNumber String
-  legalAddress      String
-  address           String
-  phoneNumber       String
-  otherPhoneNumber  String
-  email             String
-  contactPerson     String
-  taxId             String
-  created_at        DateTime   @default(now())
-  updated_at        DateTime   @updatedAt
-  Sale              Sale[]
-  SaleItem          SaleItem[]
-  Credit            Credit[]
+  id                 Int                  @id @default(autoincrement())
+  name               String               @unique
+  companyCode        String
+  companyType        String
+  companyId          String
+  accountNumber      String
+  bankAccountNumber  String
+  legalAddress       String
+  address            String
+  phoneNumber        String
+  otherPhoneNumber   String
+  email              String
+  contactPerson      String
+  taxId              String
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @updatedAt
+  Sale               Sale[]
+  SaleItem           SaleItem[]
+  Credit             Credit[]
+  TransactionHistory TransactionHistory[]
 }
 
 model InventorySupplier {

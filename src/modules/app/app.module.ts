@@ -11,12 +11,14 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { GLOBAL_CONFIG } from '../../configs/global.config';
 import { LoggerModule } from '../logger/logger.module';
 import { LoggerMiddleware } from '../../middlewares/logger.middleware';
-
-import { AppService } from './app.service';
-import { AppController } from './app.controller';
 import { ProductCategoryModule } from '../productCategory/productCategory.module';
 import { SaleModule } from '../sale/sale.module';
 import { ClientModule } from '../client/client.module';
+import { CreditModule } from '../credit/credit.module';
+import { TransactionHistoryModule } from '../transactionHistory/transactionHistory.module';
+
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { ClientModule } from '../client/client.module';
     SaleModule,
     ClientModule,
     ConfigModule.forRoot({ isGlobal: true, load: [() => GLOBAL_CONFIG] }),
+    CreditModule,
+    TransactionHistoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

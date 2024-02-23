@@ -8,6 +8,7 @@ import {
   Put,
   UseGuards,
   Req,
+  Query,
 } from '@nestjs/common';
 import { Sale as SaleModel, Prisma, User } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
@@ -21,8 +22,26 @@ import { SaleAPIType, SaleService } from './sale.service';
 export class SaleController {
   constructor(private saleService: SaleService) {}
   @Get('/')
-  async getAllSales(): Promise<SaleModel[]> {
-    return this.saleService.findAll({});
+  async getAllSales(
+    @Query() query?: { client?: Array<string>; page: number; limit: number },
+  ): Promise<{ saleList: SaleModel[]; totalPages: number }> {
+    const where: Prisma.SaleWhereInput = {};
+
+    if (Array.isArray(query?.client)) {
+      where.clientId = { in: query.client.map((clId) => Number(clId)) };
+    } else if (query.client) {
+      where.clientId = Number(query.client);
+    }
+    const page = query?.page || 1;
+    const limit = query?.limit || 10;
+    const skip = (page - 1 || 1) * limit;
+    const take = parseInt(String(limit));
+    const totalPages = await this.saleService.getTotalPages(limit);
+    const saleList = await this.saleService.findAll({ where, skip, take });
+    return {
+      saleList,
+      totalPages,
+    };
   }
 
   @Get('/:id')
