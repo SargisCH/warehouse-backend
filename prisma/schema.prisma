@@ -29,6 +29,7 @@ model Tenant {
   Credit             Credit?              @relation(fields: [creditId], references: [id])
   creditId           Int?
   TransactionHistory TransactionHistory[]
+  currency           String?              @default("AMD")
 }
 
 model TransactionHistory {
