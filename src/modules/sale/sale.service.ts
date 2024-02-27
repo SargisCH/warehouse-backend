@@ -35,8 +35,11 @@ export class SaleService {
       include: { client: true, saleItems: { include: { product: true } } },
     });
   }
-  async getTotalPages(pageSize: number): Promise<number> {
-    const totalPosts = await this.prisma.sale.count();
+  async getTotalPages(
+    pageSize: number,
+    where?: Prisma.SaleWhereInput,
+  ): Promise<number> {
+    const totalPosts = await this.prisma.sale.count({ where });
     const totalPages = Math.ceil(totalPosts / pageSize);
     return totalPages;
   }
@@ -49,7 +52,6 @@ export class SaleService {
     orderBy?: Prisma.SaleOrderByWithRelationInput;
   }): Promise<Sale[]> {
     const { skip, take, cursor, where, orderBy } = params;
-    console.log('params', params);
     return this.prisma.sale.findMany({
       skip,
       take,

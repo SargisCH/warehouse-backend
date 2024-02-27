@@ -34,9 +34,9 @@ export class SaleController {
     }
     const page = query?.page || 1;
     const limit = query?.limit || 10;
-    const skip = (page - 1 || 1) * limit;
+    const skip = !page ? 0 : (page - 1) * limit;
     const take = parseInt(String(limit));
-    const totalPages = await this.saleService.getTotalPages(limit);
+    const totalPages = await this.saleService.getTotalPages(limit, where);
     const saleList = await this.saleService.findAll({ where, skip, take });
     return {
       saleList,
