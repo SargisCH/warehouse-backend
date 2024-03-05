@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Sale, Prisma, User } from '@prisma/client';
+import { Sale, Prisma, User, TransactionType } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -35,6 +35,14 @@ export class SaleService {
       include: { client: true, saleItems: { include: { product: true } } },
     });
   }
+  async getTotalPages(
+    pageSize: number,
+    where?: Prisma.SaleWhereInput,
+  ): Promise<number> {
+    const totalPosts = await this.prisma.sale.count({ where });
+    const totalPages = Math.ceil(totalPosts / pageSize);
+    return totalPages;
+  }
 
   async findAll(params: {
     skip?: number;
@@ -44,7 +52,6 @@ export class SaleService {
     orderBy?: Prisma.SaleOrderByWithRelationInput;
   }): Promise<Sale[]> {
     const { skip, take, cursor, where, orderBy } = params;
-
     return this.prisma.sale.findMany({
       skip,
       take,
@@ -75,7 +82,7 @@ export class SaleService {
       );
     });
     await Promise.all(promises);
-    const isPartailCredit = data.paymentType === PaymentTypeEnum.CREDIT;
+    const isPartailCredit = data.paymentType === PaymentTypeEnum.PARTIAL_CREDIT;
     const saleCreated = await this.prisma.sale.create({
       data: {
         paymentType: data.paymentType,
@@ -91,34 +98,18 @@ export class SaleService {
       0,
     );
 
+    const { tenantId } = user;
+
     if (data.paymentType === PaymentTypeEnum.CREDIT) {
       await this.prisma.credit.create({
         data: {
           saleId: saleCreated.id,
           clientId: data.clientId,
           amount,
+          tenantId,
         },
       });
     } else if (isPartailCredit) {
-      const creditAmount = data.partialCreditAmount;
-      await this.prisma.credit.create({
-        data: {
-          saleId: saleCreated.id,
-          clientId: data.clientId,
-          amount: creditAmount,
-        },
-      });
-    } else if (data.paymentType === PaymentTypeEnum.CASH) {
-      const totalAmount = data.saleItems.reduce(
-        (acc, s) => s.price * s.amount + acc,
-        0,
-      );
-      const { tenantId } = user;
-      await this.prisma.tenant.update({
-        where: { id: tenantId },
-        data: { balance: { increment: totalAmount } },
-      });
-    } else if (data.paymentType === PaymentTypeEnum.PARTIAL_CREDIT) {
       const totalAmount = data.saleItems.reduce(
         (acc, s) => s.price * s.amount + acc,
         0,
@@ -129,11 +120,37 @@ export class SaleService {
           'The partial credit amount is mandatory when partial credit is selected as a payment method',
         );
       }
-      const { tenantId } = user;
       await this.prisma.tenant.update({
         where: { id: tenantId },
         data: {
           balance: { increment: totalAmount - data.partialCreditAmount },
+        },
+      });
+      await this.prisma.credit.create({
+        data: {
+          tenantId: tenantId,
+          amount: data.partialCreditAmount,
+          saleId: saleCreated.id,
+          clientId: data.clientId,
+        },
+      });
+    } else if (data.paymentType === PaymentTypeEnum.CASH) {
+      const totalAmount = data.saleItems.reduce(
+        (acc, s) => s.price * s.amount + acc,
+        0,
+      );
+      await this.prisma.tenant.update({
+        where: { id: tenantId },
+        data: { balance: { increment: totalAmount } },
+      });
+    } else if (data.paymentType === PaymentTypeEnum.TRANSFER) {
+      await this.prisma.transactionHistory.create({
+        data: {
+          tenantId,
+          amount,
+          saleId: saleCreated.id,
+          transactionType: TransactionType.IN,
+          clientId: data.clientId,
         },
       });
     }
