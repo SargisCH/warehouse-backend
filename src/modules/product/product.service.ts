@@ -3,6 +3,21 @@ import { Product, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 
+export type productCreateType = {
+  name: string;
+  inStock?: number;
+  inStockUnit: string;
+  price: number;
+  priceUnit: string;
+  ingredients: Array<{
+    id?: string;
+    amount: number;
+    unit: string;
+    inventory: number;
+  }>;
+  isProductMigration?: boolean;
+};
+
 @Injectable()
 export class ProductService {
   constructor(private prisma: PrismaService) {}
@@ -34,9 +49,43 @@ export class ProductService {
     });
   }
 
-  async create(data: Prisma.ProductCreateInput): Promise<Product> {
+  async create(data: productCreateType): Promise<Product> {
+    const create = [];
+    const invenoryUpdatePromises = [];
+
+    data.ingredients.forEach((ingredient) => {
+      if (!data.isProductMigration) {
+        invenoryUpdatePromises.push(
+          this.prisma.inventory.update({
+            where: { id: ingredient.inventory },
+            data: { amount: { decrement: ingredient.amount } },
+          }),
+        );
+      }
+
+      create.push({
+        amount: ingredient.amount,
+        amountUnit: ingredient.unit,
+        inventory: {
+          connect: {
+            id: ingredient.inventory,
+          },
+        },
+      });
+    });
+    const productCreateInput = {
+      name: data.name,
+      inStock: data.inStock,
+      inStockUnit: data.inStockUnit,
+      price: data.price,
+      priceUnit: data.priceUnit,
+      ingredients: {
+        create,
+      },
+    };
+    await Promise.all(invenoryUpdatePromises);
     return this.prisma.product.create({
-      data,
+      data: productCreateInput,
     });
   }
 

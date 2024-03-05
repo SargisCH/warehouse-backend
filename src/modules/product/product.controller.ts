@@ -10,7 +10,7 @@ import {
 import { Product as ProductModel } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 
-import { ProductService } from './product.service';
+import { productCreateType, ProductService } from './product.service';
 
 @ApiTags('product')
 @Controller('/product')
@@ -55,40 +55,9 @@ export class ProductController {
   @Post('create')
   async createDraft(
     @Body()
-    postData: {
-      name: string;
-      inStock?: number;
-      inStockUnit: string;
-      price: number;
-      priceUnit: string;
-      ingredients: Array<{
-        id?: string;
-        amount: number;
-        unit: string;
-        inventory: number;
-      }>;
-    },
+    postData: productCreateType,
   ): Promise<ProductModel> {
-    const { name, inStockUnit, inStock, price, priceUnit, ingredients } =
-      postData;
-    return this.productService.create({
-      name,
-      inStock,
-      inStockUnit,
-      price,
-      priceUnit,
-      ingredients: {
-        create: ingredients.map((ingredient) => ({
-          amount: ingredient.amount,
-          amountUnit: ingredient.unit,
-          inventory: {
-            connect: {
-              id: ingredient.inventory,
-            },
-          },
-        })),
-      },
-    });
+    return this.productService.create(postData);
   }
 
   @Put('/:id')

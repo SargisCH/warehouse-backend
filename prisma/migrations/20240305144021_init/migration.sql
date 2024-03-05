@@ -18,6 +18,7 @@ CREATE TABLE "Tenant" (
     "name" TEXT NOT NULL,
     "balance" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "creditId" INTEGER,
+    "currency" TEXT DEFAULT 'AMD',
 
     CONSTRAINT "Tenant_pkey" PRIMARY KEY ("id")
 );
