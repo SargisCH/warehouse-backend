@@ -69,7 +69,7 @@ export class SaleService {
     const promises = [];
     productCounts.forEach((pc) => {
       promises.push(
-        this.prisma.product.update({
+        this.prisma.stockProduct.update({
           where: {
             id: pc.id,
           },

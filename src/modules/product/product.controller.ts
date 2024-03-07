@@ -7,10 +7,14 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
-import { Product as ProductModel } from '@prisma/client';
+import { Product as ProductModel, StockProduct } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 
-import { productCreateType, ProductService } from './product.service';
+import {
+  productAddInStockType,
+  productCreateType,
+  ProductService,
+} from './product.service';
 
 @ApiTags('product')
 @Controller('/product')
@@ -20,6 +24,11 @@ export class ProductController {
   @Get('/')
   async getAllProduct(): Promise<ProductModel[]> {
     return this.productService.findAll({});
+  }
+
+  @Get('/stockProduct')
+  async getAllStockProduct(): Promise<StockProduct[]> {
+    return this.productService.findAllStockProducts({});
   }
 
   @Get('/:id')
@@ -53,11 +62,19 @@ export class ProductController {
   // }
 
   @Post('create')
-  async createDraft(
+  async createProduct(
     @Body()
     postData: productCreateType,
   ): Promise<ProductModel> {
     return this.productService.create(postData);
+  }
+
+  @Post('addInStock')
+  async addInStock(
+    @Body()
+    postData: productAddInStockType,
+  ): Promise<StockProduct> {
+    return this.productService.addInStock(postData);
   }
 
   @Put('/:id')

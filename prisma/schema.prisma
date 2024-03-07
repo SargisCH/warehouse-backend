@@ -93,16 +93,25 @@ model TradeCredit {
 }
 
 model Product {
-  id          Int          @id @default(autoincrement())
-  name        String       @unique
-  ingredients Ingredient[]
-  price       Float
-  priceUnit   String
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  ingredients  Ingredient[]
+  price        Float
+  priceUnit    String
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+  SaleItem     SaleItem[]
+  StockProduct StockProduct?
+}
+
+model StockProduct {
+  id          Int      @id @default(autoincrement())
   inStock     Float
   inStockUnit String
-  created_at  DateTime     @default(now())
-  updated_at  DateTime     @updatedAt
-  SaleItem    SaleItem[]
+  product     Product  @relation(fields: [productId], references: [id])
+  productId   Int      @unique
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 }
 
 model ProductCategory {

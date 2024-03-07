@@ -1,12 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Product, Prisma } from '@prisma/client';
+import { Product, Prisma, StockProduct } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 
 export type productCreateType = {
   name: string;
-  inStock?: number;
-  inStockUnit: string;
   price: number;
   priceUnit: string;
   ingredients: Array<{
@@ -15,7 +13,12 @@ export type productCreateType = {
     unit: string;
     inventory: number;
   }>;
-  isProductMigration?: boolean;
+};
+
+export type productAddInStockType = {
+  productId: number;
+  inStock?: number;
+  inStockUnit: string;
 };
 
 @Injectable()
@@ -48,44 +51,72 @@ export class ProductService {
       include: { ingredients: true },
     });
   }
+  async findAllStockProducts(params: {
+    skip?: number;
+    take?: number;
+    cursor?: Prisma.StockProductWhereUniqueInput;
+    where?: Prisma.StockProductWhereInput;
+    orderBy?: Prisma.StockProductOrderByWithRelationInput;
+  }): Promise<StockProduct[]> {
+    const { skip, take, cursor, where, orderBy } = params;
+    return this.prisma.stockProduct.findMany({
+      skip,
+      take,
+      cursor,
+      where,
+      orderBy,
+      include: { product: true },
+    });
+  }
 
   async create(data: productCreateType): Promise<Product> {
-    const create = [];
-    const invenoryUpdatePromises = [];
-
-    data.ingredients.forEach((ingredient) => {
-      if (!data.isProductMigration) {
-        invenoryUpdatePromises.push(
-          this.prisma.inventory.update({
-            where: { id: ingredient.inventory },
-            data: { amount: { decrement: ingredient.amount } },
-          }),
-        );
-      }
-
-      create.push({
-        amount: ingredient.amount,
-        amountUnit: ingredient.unit,
-        inventory: {
-          connect: {
-            id: ingredient.inventory,
-          },
-        },
-      });
-    });
     const productCreateInput = {
       name: data.name,
-      inStock: data.inStock,
-      inStockUnit: data.inStockUnit,
       price: data.price,
       priceUnit: data.priceUnit,
       ingredients: {
-        create,
+        create: data.ingredients.map((ingredient) => {
+          return {
+            amount: ingredient.amount,
+            amountUnit: ingredient.unit,
+            inventory: {
+              connect: {
+                id: ingredient.inventory,
+              },
+            },
+          };
+        }),
       },
     };
-    await Promise.all(invenoryUpdatePromises);
     return this.prisma.product.create({
       data: productCreateInput,
+    });
+  }
+  async addInStock(data: productAddInStockType) {
+    const invenoryUpdatePromises = [];
+    const product = await this.prisma.product.findUnique({
+      where: { id: data.productId },
+      include: { ingredients: true },
+    });
+
+    product.ingredients.forEach((ingredient) => {
+      invenoryUpdatePromises.push(
+        this.prisma.inventory.update({
+          where: { id: ingredient.inventoryId },
+          data: {
+            amount: { decrement: ingredient.amount * data.inStock },
+          },
+        }),
+      );
+    });
+
+    await Promise.all(invenoryUpdatePromises);
+    return this.prisma.stockProduct.create({
+      data: {
+        productId: data.productId,
+        inStock: data.inStock,
+        inStockUnit: data.inStockUnit,
+      },
     });
   }
 
