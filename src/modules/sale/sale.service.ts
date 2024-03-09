@@ -106,7 +106,6 @@ export class SaleService {
           saleId: saleCreated.id,
           clientId: data.clientId,
           amount,
-          tenantId,
         },
       });
     } else if (isPartailCredit) {
@@ -128,7 +127,6 @@ export class SaleService {
       });
       await this.prisma.credit.create({
         data: {
-          tenantId: tenantId,
           amount: data.partialCreditAmount,
           saleId: saleCreated.id,
           clientId: data.clientId,
@@ -146,7 +144,6 @@ export class SaleService {
     } else if (data.paymentType === PaymentTypeEnum.TRANSFER) {
       await this.prisma.transactionHistory.create({
         data: {
-          tenantId,
           amount,
           saleId: saleCreated.id,
           transactionType: TransactionType.IN,

@@ -12,6 +12,7 @@ import { GLOBAL_CONFIG } from './configs/global.config';
 import { MyLogger } from './modules/logger/logger.service';
 import { InvalidFormExceptionFilter } from './filters/invalid.form.exception.filter';
 import { AllExceptionsFilter } from './filters/all.exceptions.filter';
+import { CognitoIdentityServiceProvider } from 'aws-sdk';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {

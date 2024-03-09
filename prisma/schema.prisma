@@ -15,46 +15,46 @@ enum TransactionType {
 model User {
   id          Int     @id @default(autoincrement())
   email       String  @unique
-  password    String
+  password    String?
   companyName String?
   tenant      Tenant  @relation(fields: [tenantId], references: [id])
   tenantId    Int
 }
 
 model Tenant {
-  id                 Int                  @id @default(autoincrement())
-  name               String
-  User               User[]
-  balance            Float                @default(0)
-  TransactionHistory TransactionHistory[]
-  Credit             Credit?              @relation(fields: [creditId], references: [id])
-  creditId           Int?
-  currency           String?              @default("AMD")
+  id       Int     @id @default(autoincrement())
+  name     String
+  User     User[]
+  balance  Float   @default(0)
+  Credit   Credit? @relation(fields: [creditId], references: [id])
+  creditId Int?
+  currency String? @default("AMD")
 }
 
 model TransactionHistory {
-  id              Int                     @id @default(autoincrement())
-  tenant          Tenant                  @relation(fields: [tenantId], references: [id])
-  tenantId        Int
-  transactionType TransactionType
-  amount          Float
-  sale            Sale?                   @relation(fields: [saleId], references: [id])
-  saleId          Int?
-  order           InventorySupplierOrder? @relation(fields: [orderId], references: [id])
-  orderId         Int?
-  client          Client                  @relation(fields: [clientId], references: [id])
-  clientId        Int
+  id                  Int                     @id @default(autoincrement())
+  transactionType     TransactionType
+  amount              Float
+  sale                Sale?                   @relation(fields: [saleId], references: [id])
+  saleId              Int?
+  order               InventorySupplierOrder? @relation(fields: [orderId], references: [id])
+  orderId             Int?
+  client              Client?                 @relation(fields: [clientId], references: [id])
+  clientId            Int?
+  inventorySupplier   InventorySupplier?      @relation(fields: [inventorySupplierId], references: [id])
+  inventorySupplierId Int?
+  date                DateTime?               @default(now())
 }
 
 model Credit {
-  id       Int      @id @default(autoincrement())
+  id       Int       @id @default(autoincrement())
   amount   Int
-  sale     Sale     @relation(fields: [saleId], references: [id])
-  saleId   Int      @unique
-  currency String?  @default("AMD")
-  tenantId Int
-  client   Client   @relation(fields: [clientId], references: [id])
+  sale     Sale?     @relation(fields: [saleId], references: [id])
+  saleId   Int?      @unique
+  currency String?   @default("AMD")
+  client   Client    @relation(fields: [clientId], references: [id])
   clientId Int
+  date     DateTime? @default(now())
   Tenant   Tenant[]
 }
 
@@ -155,15 +155,28 @@ model Client {
   SaleItem           SaleItem[]
   Credit             Credit[]
   TransactionHistory TransactionHistory[]
+  Manager            Manager?             @relation(fields: [managerId], references: [id])
+  managerId          Int?
+}
+
+model Manager {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  phoneNumber String
+  email       String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  clients     Client[]
 }
 
 model InventorySupplier {
-  id         Int                      @id @default(autoincrement())
-  name       String                   @unique
-  created_at DateTime                 @default(now())
-  updated_at DateTime                 @updatedAt
-  orders     InventorySupplierOrder[]
-  deleted    Boolean                  @default(false)
+  id                 Int                      @id @default(autoincrement())
+  name               String                   @unique
+  created_at         DateTime                 @default(now())
+  updated_at         DateTime                 @updatedAt
+  orders             InventorySupplierOrder[]
+  deleted            Boolean                  @default(false)
+  TransactionHistory TransactionHistory[]
 }
 
 model InventorySupplierOrder {

@@ -32,4 +32,22 @@ export class TransactionHistoryService {
       include: { sale: true, client: true },
     });
   }
+  async create(
+    data: Prisma.TransactionHistoryCreateInput,
+  ): Promise<TransactionHistory> {
+    return this.prisma.transactionHistory.create({
+      data,
+    });
+  }
+
+  async update(params: {
+    where: Prisma.TransactionHistoryWhereUniqueInput;
+    data: Prisma.TransactionHistoryUpdateInput;
+  }): Promise<TransactionHistory> {
+    const { data, where } = params;
+    return this.prisma.transactionHistory.update({
+      data,
+      where,
+    });
+  }
 }

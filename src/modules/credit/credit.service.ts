@@ -33,4 +33,21 @@ export class CreditService {
       include: { sale: true, client: true },
     });
   }
+  async create(data: Prisma.CreditCreateInput): Promise<Credit> {
+    return this.prisma.credit.create({
+      data,
+    });
+  }
+
+  async update(params: {
+    where: Prisma.CreditWhereUniqueInput;
+    data: Prisma.CreditUpdateInput;
+  }): Promise<Credit> {
+    const { data, where } = params;
+    console.log('params', params);
+    return this.prisma.credit.update({
+      data,
+      where,
+    });
+  }
 }

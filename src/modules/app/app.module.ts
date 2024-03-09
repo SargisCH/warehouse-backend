@@ -16,6 +16,7 @@ import { SaleModule } from '../sale/sale.module';
 import { ClientModule } from '../client/client.module';
 import { CreditModule } from '../credit/credit.module';
 import { TransactionHistoryModule } from '../transactionHistory/transactionHistory.module';
+import { ManagerModule } from '../manager/manager.module';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -35,6 +36,7 @@ import { AppService } from './app.service';
     ConfigModule.forRoot({ isGlobal: true, load: [() => GLOBAL_CONFIG] }),
     CreditModule,
     TransactionHistoryModule,
+    ManagerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
