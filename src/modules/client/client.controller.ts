@@ -11,6 +11,7 @@ import { Client as ClientModel, Prisma } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 
 import { ClientService } from './client.service';
+import { ClientDTO } from './client.dto';
 
 @ApiTags('client')
 @Controller('/client')
@@ -30,7 +31,7 @@ export class ClientController {
   @Post('create')
   async createDraft(
     @Body()
-    clientData: Prisma.ClientCreateInput,
+    clientData: ClientDTO,
   ): Promise<ClientModel> {
     return this.clientService.create(clientData);
   }

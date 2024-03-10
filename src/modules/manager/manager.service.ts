@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Manager, Prisma, User } from '@prisma/client';
+import { Manager, Prisma, Schedule, User } from '@prisma/client';
 import { CognitoIdentityServiceProvider } from 'aws-sdk';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,6 +13,16 @@ export class ManagerService {
   ): Promise<Manager | null> {
     return this.prisma.manager.findUnique({
       where: managerWhereUniqueInput,
+      include: { schedule: { include: { client: true } } },
+    });
+  }
+
+  async findSchedule(
+    managerId: number,
+    clientId: number,
+  ): Promise<Schedule | null> {
+    return this.prisma.schedule.findUnique({
+      where: { managerId_clientId: { managerId, clientId } },
     });
   }
 

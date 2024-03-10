@@ -9,6 +9,16 @@ export enum ROLES_ENUM {
   USER = 'user',
 }
 
+export enum WeekDay {
+  MONDAY = 'MONDAY',
+  TUESDAY = 'TUESDAY',
+  WEDNESDAY = 'WEDNESDAY',
+  THURSDAY = 'THURSDAY',
+  FRIDAY = 'FRIDAY',
+  SATURDAY = 'SATURDAY',
+  SUNDAY = 'SUNDAY',
+}
+
 export const ROLES = {
   ADMIN: 'admin',
   USER: 'user',

@@ -12,6 +12,16 @@ enum TransactionType {
   OUT
 }
 
+enum WeekDay {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
 model User {
   id          Int     @id @default(autoincrement())
   email       String  @unique
@@ -155,18 +165,20 @@ model Client {
   SaleItem           SaleItem[]
   Credit             Credit[]
   TransactionHistory TransactionHistory[]
-  Manager            Manager?             @relation(fields: [managerId], references: [id])
+  Schedule           Schedule[]
+  manager            Manager?             @relation(fields: [managerId], references: [id])
   managerId          Int?
 }
 
 model Manager {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
   phoneNumber String
   email       String
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  clients     Client[]
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+  schedule    Schedule[]
+  Client      Client[]
 }
 
 model InventorySupplier {
@@ -237,4 +249,15 @@ model SaleItem {
   clientId                 Int?
   InventorySupplierOrder   InventorySupplierOrder? @relation(fields: [inventorySupplierOrderId], references: [id])
   inventorySupplierOrderId Int?
+}
+
+model Schedule {
+  id        Int       @id @default(autoincrement())
+  client    Client?   @relation(fields: [clientId], references: [id])
+  clientId  Int?
+  manager   Manager?  @relation(fields: [managerId], references: [id])
+  managerId Int?
+  dayPlan   WeekDay[]
+
+  @@unique([managerId, clientId])
 }

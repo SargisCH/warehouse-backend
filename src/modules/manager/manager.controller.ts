@@ -9,7 +9,12 @@ import {
   UseGuards,
   Req,
 } from '@nestjs/common';
-import { Manager as ManagerModel, Prisma, User } from '@prisma/client';
+import {
+  Manager as ManagerModel,
+  Prisma,
+  Schedule,
+  User,
+} from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 
 import { AuthGuard } from '../auth/auth.guard';
@@ -29,6 +34,14 @@ export class ManagerController {
   @Get('/:id')
   async getManagerById(@Param('id') id: string): Promise<ManagerModel> {
     return this.managerService.findOne({ id: Number(id) });
+  }
+
+  @Get('/:id/schedule/:clientId')
+  async getSchedule(
+    @Param('id') id: string,
+    @Param('clientId') clientId: string,
+  ): Promise<Schedule> {
+    return this.managerService.findSchedule(Number(id), Number(clientId));
   }
 
   @Post('create')

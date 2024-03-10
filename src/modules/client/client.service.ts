@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Client, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { ClientDTO } from './client.dto';
 
 @Injectable()
 export class ClientService {
@@ -32,10 +33,23 @@ export class ClientService {
     });
   }
 
-  async create(data: Prisma.ClientCreateInput): Promise<Client> {
-    return this.prisma.client.create({
-      data,
+  async create(data: ClientDTO): Promise<Client> {
+    const clientCreateData = { ...data };
+    delete clientCreateData.dayPlan;
+    const client = await this.prisma.client.create({
+      data: clientCreateData,
     });
+
+    if (data.managerId) {
+      await this.prisma.schedule.create({
+        data: {
+          managerId: data.managerId,
+          clientId: client.id,
+          dayPlan: data.dayPlan,
+        },
+      });
+    }
+    return client;
   }
 
   async update(params: {
