@@ -21,15 +21,26 @@ export class InventoryService {
     cursor?: Prisma.InventoryWhereUniqueInput;
     where?: Prisma.InventoryWhereInput;
     orderBy?: Prisma.InventoryOrderByWithRelationInput;
-  }): Promise<Inventory[]> {
+  }): Promise<{ inventories: Inventory[]; totalWorth: number }> {
     const { skip, take, cursor, where, orderBy } = params;
-    return this.prisma.inventory.findMany({
+    const query = Prisma.sql`
+      SELECT SUM(amount * price) AS total_price
+      FROM public."Inventory";
+    `;
+    const result = await this.prisma.$queryRaw(query);
+    const totalWorth = result[0].total_price || 0;
+
+    const inventoryData = await this.prisma.inventory.findMany({
       skip,
       take,
       cursor,
       where,
       orderBy,
     });
+    return {
+      totalWorth,
+      inventories: inventoryData,
+    };
   }
 
   async create(data: Prisma.InventoryCreateInput): Promise<Inventory> {

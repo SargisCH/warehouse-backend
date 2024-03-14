@@ -43,6 +43,7 @@ export class AuthService {
       password: null,
       tenantId: userData.tenantId,
       companyName: userData.companyName,
+      role: userData.role,
       // role: userData.role,
     };
 
@@ -83,6 +84,7 @@ export class AuthService {
       include: { tenant: true },
     });
     delete user.password;
+    console.log('user', user);
     return user;
   }
 }

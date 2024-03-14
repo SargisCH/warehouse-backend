@@ -18,7 +18,10 @@ export class InventoryController {
   constructor(private inventoryService: InventoryService) {}
 
   @Get('/')
-  async getAllInventory(): Promise<InventoryModel[]> {
+  async getAllInventory(): Promise<{
+    inventories: InventoryModel[];
+    totalWorth: number;
+  }> {
     return this.inventoryService.findAll({});
   }
 

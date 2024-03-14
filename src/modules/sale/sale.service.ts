@@ -15,7 +15,7 @@ export interface SaleAPIType {
   paymentType: PaymentTypeEnum;
   partialCreditAmount?: number;
   saleItems: Array<{
-    productId: number;
+    stockProductId: number;
     price: number;
     priceUnit: string;
     amount: number;
@@ -32,7 +32,12 @@ export class SaleService {
   ): Promise<Sale | null> {
     return this.prisma.sale.findUnique({
       where: SaleCategoryWhereUniqueInput,
-      include: { client: true, saleItems: { include: { product: true } } },
+      include: {
+        client: true,
+        saleItems: {
+          include: { stockProduct: { include: { product: true } } },
+        },
+      },
     });
   }
   async getTotalPages(
@@ -58,13 +63,21 @@ export class SaleService {
       cursor,
       where,
       orderBy,
-      include: { client: true, saleItems: { include: { product: true } } },
+      include: {
+        client: true,
+        saleItems: {
+          include: { stockProduct: { include: { product: true } } },
+        },
+      },
     });
   }
 
   async create(data: SaleAPIType, user: User): Promise<Sale> {
     const productCounts: Array<{ id: number; amount: number }> =
-      data.saleItems.map((si) => ({ id: si.productId, amount: si.amount }));
+      data.saleItems.map((si) => ({
+        id: si.stockProductId,
+        amount: si.amount,
+      }));
 
     const promises = [];
     productCounts.forEach((pc) => {

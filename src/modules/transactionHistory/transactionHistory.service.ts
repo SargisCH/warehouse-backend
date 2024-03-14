@@ -29,7 +29,7 @@ export class TransactionHistoryService {
       cursor,
       where,
       orderBy,
-      include: { sale: true, client: true },
+      include: { sale: true, client: true, inventorySupplier: true },
     });
   }
   async create(

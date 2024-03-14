@@ -49,6 +49,7 @@ export class AuthController {
   async getUser(
     @Body() body: { email: string },
   ): Promise<Omit<UserModel, 'password'>> {
+    console.log('body email', body.email);
     return this.authService.getUser(body.email);
   }
 

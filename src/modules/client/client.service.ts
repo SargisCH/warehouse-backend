@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Client, Prisma } from '@prisma/client';
+import { Client, Prisma, Role, User } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { ClientDTO } from './client.dto';
@@ -16,14 +16,28 @@ export class ClientService {
     });
   }
 
-  async findAll(params: {
-    skip?: number;
-    take?: number;
-    cursor?: Prisma.ClientWhereUniqueInput;
-    where?: Prisma.ClientWhereInput;
-    orderBy?: Prisma.ClientOrderByWithRelationInput;
-  }): Promise<Client[]> {
-    const { skip, take, cursor, where, orderBy } = params;
+  async findAll(
+    params: {
+      skip?: number;
+      take?: number;
+      cursor?: Prisma.ClientWhereUniqueInput;
+      where?: Prisma.ClientWhereInput;
+      orderBy?: Prisma.ClientOrderByWithRelationInput;
+    },
+    user: User,
+  ): Promise<Client[]> {
+    const { skip, take, cursor, where = {}, orderBy } = params;
+    // only return the client where the manager assigned to
+
+    if (user.role === Role.MANAGER) {
+      const manager = await this.prisma.manager.findFirstOrThrow({
+        where: { email: user.email },
+      });
+
+      if (manager.id) {
+        where.managerId = manager.id;
+      }
+    }
     return this.prisma.client.findMany({
       skip,
       take,

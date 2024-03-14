@@ -42,7 +42,8 @@ export class ProductService {
     orderBy?: Prisma.ProductOrderByWithRelationInput;
   }): Promise<Product[]> {
     const { skip, take, cursor, where, orderBy } = params;
-    return this.prisma.product.findMany({
+
+    const products = await this.prisma.product.findMany({
       skip,
       take,
       cursor,
@@ -50,6 +51,7 @@ export class ProductService {
       orderBy,
       include: { ingredients: true },
     });
+    return products;
   }
   async findAllStockProducts(params: {
     skip?: number;
@@ -57,9 +59,16 @@ export class ProductService {
     cursor?: Prisma.StockProductWhereUniqueInput;
     where?: Prisma.StockProductWhereInput;
     orderBy?: Prisma.StockProductOrderByWithRelationInput;
-  }): Promise<StockProduct[]> {
+  }): Promise<{ stockProducts: StockProduct[]; totalWorth: number }> {
     const { skip, take, cursor, where, orderBy } = params;
-    return this.prisma.stockProduct.findMany({
+    const query = Prisma.sql`
+      SELECT SUM(sp."inStock" * p.price) AS total_price
+      FROM public."StockProduct" AS sp
+      JOIN public."Product" AS p ON sp."productId" = p.id;
+    `;
+    const result = await this.prisma.$queryRaw(query);
+    const totalWorth = result[0].total_price || 0;
+    const stockProducts = await this.prisma.stockProduct.findMany({
       skip,
       take,
       cursor,
@@ -67,6 +76,7 @@ export class ProductService {
       orderBy,
       include: { product: true },
     });
+    return { stockProducts, totalWorth };
   }
 
   async create(data: productCreateType): Promise<Product> {

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, Credit } from '@prisma/client';
+import { Prisma, Credit, User, Role } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -23,7 +23,8 @@ export class CreditService {
     where?: Prisma.CreditWhereInput;
     orderBy?: Prisma.CreditOrderByWithRelationInput;
   }): Promise<Credit[]> {
-    const { skip, take, cursor, where, orderBy } = params;
+    const { skip, take, cursor, where = {}, orderBy } = params;
+    // only return the client where the manager assigned to
     return this.prisma.credit.findMany({
       skip,
       take,

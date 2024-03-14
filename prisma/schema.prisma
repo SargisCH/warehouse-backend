@@ -12,6 +12,12 @@ enum TransactionType {
   OUT
 }
 
+enum Role {
+  ADMIN
+  MANAGER
+  UNKNOWN
+}
+
 enum WeekDay {
   MONDAY
   TUESDAY
@@ -27,6 +33,7 @@ model User {
   email       String  @unique
   password    String?
   companyName String?
+  role        Role?   @default(UNKNOWN)
   tenant      Tenant  @relation(fields: [tenantId], references: [id])
   tenantId    Int
 }
@@ -110,18 +117,18 @@ model Product {
   priceUnit    String
   created_at   DateTime      @default(now())
   updated_at   DateTime      @updatedAt
-  SaleItem     SaleItem[]
   StockProduct StockProduct?
 }
 
 model StockProduct {
-  id          Int      @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   inStock     Float
   inStockUnit String
-  product     Product  @relation(fields: [productId], references: [id])
-  productId   Int      @unique
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  product     Product    @relation(fields: [productId], references: [id])
+  productId   Int        @unique
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+  SaleItem    SaleItem[]
 }
 
 model ProductCategory {
@@ -233,8 +240,8 @@ model Sale {
 
 model SaleItem {
   id                       Int                     @id @default(autoincrement())
-  product                  Product                 @relation(fields: [productId], references: [id])
-  productId                Int
+  stockProduct             StockProduct            @relation(fields: [stockProductId], references: [id])
+  stockProductId           Int
   price                    Float
   priceUnit                String
   amount                   Float

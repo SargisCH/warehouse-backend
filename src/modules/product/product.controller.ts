@@ -27,7 +27,10 @@ export class ProductController {
   }
 
   @Get('/stockProduct')
-  async getAllStockProduct(): Promise<StockProduct[]> {
+  async getAllStockProduct(): Promise<{
+    stockProducts: StockProduct[];
+    totalWorth: number;
+  }> {
     return this.productService.findAllStockProducts({});
   }
 

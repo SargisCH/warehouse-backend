@@ -22,6 +22,7 @@ export enum WeekDay {
 export const ROLES = {
   ADMIN: 'admin',
   USER: 'user',
+  MANAGER: 'MANAGER',
 };
 export const DEFAULT_PAGE_LIMIT = 10;
 export const MAX_PAGE_LIMIT = 100;

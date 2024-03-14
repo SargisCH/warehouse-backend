@@ -17,6 +17,14 @@ export class ManagerService {
     });
   }
 
+  async findFirst(
+    managerWhereInput: Prisma.ManagerWhereInput,
+  ): Promise<Manager | null> {
+    return this.prisma.manager.findFirst({
+      where: managerWhereInput,
+    });
+  }
+
   async findSchedule(
     managerId: number,
     clientId: number,
