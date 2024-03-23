@@ -10,22 +10,40 @@ import {
   Req,
   Query,
 } from '@nestjs/common';
-import { Sale as SaleModel, Prisma, User } from '@prisma/client';
+import { Sale as SaleModel, Prisma, User, Manager, Role } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 
 import { AuthGuard } from '../auth/auth.guard';
+import { ManagerService } from '../manager/manager.service';
 
 import { SaleAPIType, SaleService } from './sale.service';
 
 @ApiTags('sale')
 @Controller('/sale')
 export class SaleController {
-  constructor(private saleService: SaleService) {}
+  constructor(
+    private saleService: SaleService,
+    private managerService: ManagerService,
+  ) {}
+
   @Get('/')
+  @UseGuards(AuthGuard)
   async getAllSales(
+    @Req() request: Request,
     @Query() query?: { client?: Array<string>; page: number; limit: number },
   ): Promise<{ saleList: SaleModel[]; totalPages: number }> {
     const where: Prisma.SaleWhereInput = {};
+    const user = (request as any).user as User;
+    let manager: Manager;
+    if (user.role === Role.MANAGER) {
+      manager = await this.managerService.findFirst({
+        email: user.email,
+      });
+
+      if (manager) {
+        where.client = { managerId: manager.id };
+      }
+    }
 
     if (Array.isArray(query?.client)) {
       where.clientId = { in: query.client.map((clId) => Number(clId)) };

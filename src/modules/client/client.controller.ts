@@ -10,14 +10,20 @@ import {
   Req,
   Query,
 } from '@nestjs/common';
-import { Client as ClientModel, Prisma, Role, User } from '@prisma/client';
+import {
+  Client as ClientModel,
+  Manager,
+  Prisma,
+  Role,
+  User,
+} from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 import { WeekDay } from 'src/shared/constants/global.constants';
 
 import { AuthGuard } from '../auth/auth.guard';
+import { ManagerService } from '../manager/manager.service';
 
 import { ClientService } from './client.service';
-import { ManagerService } from '../manager/manager.service';
 import { ClientDTO } from './client.dto';
 
 @ApiTags('client')
@@ -36,26 +42,27 @@ export class ClientController {
   ): Promise<ClientModel[]> {
     const where: Prisma.ClientWhereInput = {};
     const user = (request as any).user as User;
+    let manager: Manager;
 
-    console.log('start', query, user);
-
-    console.log('weekday', query);
-    if (query.weekDay && user.role === Role.MANAGER) {
-      const manager = await this.managerService.findFirst({
+    if (user.role === Role.MANAGER) {
+      manager = await this.managerService.findFirst({
         email: user.email,
       });
+    }
 
-      if (manager) {
-        where.managerId = manager.id;
-        where.Schedule = {
-          some: {
-            AND: [
-              { managerId: manager.id },
-              { dayPlan: { has: query.weekDay } },
-            ],
-          },
-        };
-      }
+    if (query.weekDay) {
+      const and = manager
+        ? [{ managerId: manager.id }, { dayPlan: { has: query.weekDay } }]
+        : [{ dayPlan: { has: query.weekDay } }];
+      where.Schedule = {
+        some: {
+          AND: and,
+        },
+      };
+    }
+
+    if (manager) {
+      where.managerId = manager.id;
     }
 
     return this.clientService.findAll({ where }, user);

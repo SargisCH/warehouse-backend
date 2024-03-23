@@ -1,13 +1,27 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  Manager,
   Prisma,
+  Role,
   TransactionHistory as TransactionHistoryModel,
   TransactionType,
+  User,
 } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 
-import { TransactionHistoryService } from './transactionHistory.service';
+import { ManagerService } from '../manager/manager.service';
+import { AuthGuard } from '../auth/auth.guard';
 
+import { TransactionHistoryService } from './transactionHistory.service';
 type TransactionHistoryApiType = {
   id?: number;
   transactionType: TransactionType;
@@ -21,11 +35,29 @@ type TransactionHistoryApiType = {
 @ApiTags('transactionHistory')
 @Controller('/transactionHistory')
 export class TransactionHistoryController {
-  constructor(private transactionHistoryService: TransactionHistoryService) {}
+  constructor(
+    private transactionHistoryService: TransactionHistoryService,
+    private managerService: ManagerService,
+  ) {}
 
   @Get('/')
-  async getAllTransactionHistory(): Promise<TransactionHistoryModel[]> {
-    return this.transactionHistoryService.findAll({});
+  @UseGuards(AuthGuard)
+  async getAllTransactionHistory(
+    @Req() request: Request,
+  ): Promise<TransactionHistoryModel[]> {
+    const where: Prisma.TransactionHistoryWhereInput = {};
+    const user = (request as any).user as User;
+    let manager: Manager;
+
+    if (user.role === Role.MANAGER) {
+      manager = await this.managerService.findFirst({
+        email: user.email,
+      });
+    }
+    if (manager) {
+      where.client = { managerId: manager.id };
+    }
+    return this.transactionHistoryService.findAll({ where });
   }
 
   @Get('/:id')
