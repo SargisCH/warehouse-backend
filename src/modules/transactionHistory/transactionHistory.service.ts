@@ -50,4 +50,19 @@ export class TransactionHistoryService {
       where,
     });
   }
+
+  async handleBalanceUpdate(
+    tenantId: number,
+    transactionAmount: number,
+  ): Promise<void> {
+    console.log('handle balance update', tenantId, transactionAmount);
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        balance: {
+          increment: transactionAmount,
+        },
+      },
+    });
+  }
 }

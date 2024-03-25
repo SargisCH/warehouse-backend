@@ -28,6 +28,12 @@ enum WeekDay {
   SUNDAY
 }
 
+enum TransactionStatus {
+  PENDING
+  FAILED
+  FINISHED
+}
+
 model User {
   id          Int     @id @default(autoincrement())
   email       String  @unique
@@ -61,6 +67,7 @@ model TransactionHistory {
   inventorySupplier   InventorySupplier?      @relation(fields: [inventorySupplierId], references: [id])
   inventorySupplierId Int?
   date                DateTime?               @default(now())
+  status              TransactionStatus?      @default(PENDING)
 }
 
 model Credit {
@@ -256,6 +263,7 @@ model SaleItem {
   clientId                 Int?
   InventorySupplierOrder   InventorySupplierOrder? @relation(fields: [inventorySupplierOrderId], references: [id])
   inventorySupplierOrderId Int?
+  originalPrice            Int?
 }
 
 model Schedule {

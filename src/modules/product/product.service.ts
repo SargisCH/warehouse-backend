@@ -121,6 +121,21 @@ export class ProductService {
     });
 
     await Promise.all(invenoryUpdatePromises);
+    const stockProductDB = await this.prisma.stockProduct.findFirst({
+      where: {
+        productId: data.productId,
+      },
+    });
+
+    if (stockProductDB.id) {
+      return this.prisma.stockProduct.update({
+        where: { id: stockProductDB.id },
+        data: {
+          inStock: { increment: data.inStock },
+          inStockUnit: data.inStockUnit,
+        },
+      });
+    }
     return this.prisma.stockProduct.create({
       data: {
         productId: data.productId,

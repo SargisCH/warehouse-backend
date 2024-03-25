@@ -96,6 +96,11 @@ export class SaleService {
     });
     await Promise.all(promises);
     const isPartailCredit = data.paymentType === PaymentTypeEnum.PARTIAL_CREDIT;
+    const products = await this.prisma.stockProduct.findMany({
+      where: { id: { in: data.saleItems.map((si) => si.stockProductId) } },
+      include: { product: true },
+    });
+
     const saleCreated = await this.prisma.sale.create({
       data: {
         paymentType: data.paymentType,
@@ -103,7 +108,20 @@ export class SaleService {
         client: {
           connect: { id: Number(data.clientId) },
         },
-        saleItems: { createMany: { data: data.saleItems } },
+        saleItems: {
+          createMany: {
+            data: data.saleItems.map((si) => {
+              const productFound = products.find(
+                (p) => p.productId === si.stockProductId,
+              );
+
+              if (!productFound) return si;
+              if (si.price !== productFound.product.price) {
+                return { ...si, originalPrice: productFound.product.price };
+              }
+            }),
+          },
+        },
       },
     });
     const amount = data.saleItems.reduce(

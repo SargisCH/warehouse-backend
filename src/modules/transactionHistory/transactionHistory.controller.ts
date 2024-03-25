@@ -13,6 +13,7 @@ import {
   Prisma,
   Role,
   TransactionHistory as TransactionHistoryModel,
+  TransactionStatus,
   TransactionType,
   User,
 } from '@prisma/client';
@@ -30,6 +31,7 @@ type TransactionHistoryApiType = {
   orderId?: number;
   clientId?: number;
   inventorySupplierId?: number;
+  status: TransactionStatus;
 };
 
 @ApiTags('transactionHistory')
@@ -109,14 +111,21 @@ export class TransactionHistoryController {
   }
 
   @Put('/:id')
+  @UseGuards(AuthGuard)
   async editTransactionHistory(
     @Param('id') id: string,
+    @Req() request: Request,
     @Body()
     transactionHistoryData: TransactionHistoryApiType,
   ): Promise<TransactionHistoryModel> {
+    const user = (request as any).user as User;
+    const transactionDB = await this.transactionHistoryService.findOne({
+      id: Number(id),
+    });
     const updateInput: Prisma.TransactionHistoryUpdateInput = {
       amount: transactionHistoryData.amount,
       transactionType: transactionHistoryData.transactionType,
+      status: transactionHistoryData.status,
     };
 
     if (transactionHistoryData.clientId) {
@@ -146,6 +155,21 @@ export class TransactionHistoryController {
           id: transactionHistoryData.inventorySupplierId,
         },
       };
+    }
+    console.log(
+      'statuses',
+      transactionDB.status,
+      TransactionStatus.FINISHED,
+      transactionHistoryData.status,
+    );
+    if (
+      transactionDB.status !== transactionHistoryData.status &&
+      transactionHistoryData.status === TransactionStatus.FINISHED
+    ) {
+      await this.transactionHistoryService.handleBalanceUpdate(
+        user.tenantId,
+        transactionHistoryData.amount,
+      );
     }
     return this.transactionHistoryService.update({
       where: { id: Number(id) },

@@ -37,10 +37,18 @@ export class ClientController {
   @Get('/')
   @UseGuards(AuthGuard)
   async getAllClients(
-    @Query() query: { weekDay?: WeekDay },
+    @Query()
+    query: {
+      weekDay?: WeekDay;
+      searchTerm?: string;
+      managerId: string;
+      sortKey?: string;
+      sortOrder?: string;
+    },
     @Req() request: Request,
   ): Promise<ClientModel[]> {
     const where: Prisma.ClientWhereInput = {};
+    const sort: Prisma.ClientOrderByWithRelationInput = {};
     const user = (request as any).user as User;
     let manager: Manager;
 
@@ -60,12 +68,34 @@ export class ClientController {
         },
       };
     }
+    if (user.role === Role.ADMIN && query.managerId) {
+      where.managerId = Number(query.managerId);
+    }
 
     if (manager) {
       where.managerId = manager.id;
     }
-
-    return this.clientService.findAll({ where }, user);
+    if (query.searchTerm) {
+      where.OR = [
+        { name: { contains: query.searchTerm } },
+        { companyCode: { contains: query.searchTerm } },
+        { companyType: { contains: query.searchTerm } },
+        { companyId: { contains: query.searchTerm } },
+        { accountNumber: { contains: query.searchTerm } },
+        { bankAccountNumber: { contains: query.searchTerm } },
+        { legalAddress: { contains: query.searchTerm } },
+        { address: { contains: query.searchTerm } },
+        { phoneNumber: { contains: query.searchTerm } },
+        { otherPhoneNumber: { contains: query.searchTerm } },
+        { email: { contains: query.searchTerm } },
+        { contactPerson: { contains: query.searchTerm } },
+        { taxId: { contains: query.searchTerm } },
+      ];
+    }
+    if (query.sortKey) {
+      sort[query.sortKey] = query.sortOrder;
+    }
+    return this.clientService.findAll({ where, orderBy: sort }, user);
   }
 
   @Get('/:id')
