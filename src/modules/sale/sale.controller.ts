@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { Sale as SaleModel, Prisma, User, Manager, Role } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
+import dayjs from 'dayjs';
 
 import { AuthGuard } from '../auth/auth.guard';
 import { ManagerService } from '../manager/manager.service';
@@ -30,7 +31,13 @@ export class SaleController {
   @UseGuards(AuthGuard)
   async getAllSales(
     @Req() request: Request,
-    @Query() query?: { client?: Array<string>; page: number; limit: number },
+    @Query()
+    query?: {
+      client?: Array<string>;
+      page: number;
+      limit: number;
+      created_at: string | Date;
+    },
   ): Promise<{ saleList: SaleModel[]; totalPages: number }> {
     const where: Prisma.SaleWhereInput = {};
     const user = (request as any).user as User;
@@ -54,6 +61,17 @@ export class SaleController {
     const limit = query?.limit || 10;
     const skip = !page ? 0 : (page - 1) * limit;
     const take = parseInt(String(limit));
+    const createdAt = dayjs(query.created_at, 'YYYY-MM-DD', true);
+
+    const startOfDay = createdAt.startOf('day');
+    const endOfDay = createdAt.endOf('day');
+
+    if (query.created_at && createdAt.isValid()) {
+      where.created_at = {
+        gte: startOfDay.toISOString(),
+        lte: endOfDay.toISOString(),
+      };
+    }
     const totalPages = await this.saleService.getTotalPages(limit, where);
     const saleList = await this.saleService.findAll({ where, skip, take });
     return {
@@ -74,6 +92,7 @@ export class SaleController {
     @Body()
     saleData: SaleAPIType,
   ): Promise<SaleModel> {
+    console.log('sale data', saleData);
     return this.saleService.create(saleData, (request as any).user as User);
   }
 

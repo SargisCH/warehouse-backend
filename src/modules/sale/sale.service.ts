@@ -100,7 +100,6 @@ export class SaleService {
       where: { id: { in: data.saleItems.map((si) => si.stockProductId) } },
       include: { product: true },
     });
-
     const saleCreated = await this.prisma.sale.create({
       data: {
         paymentType: data.paymentType,
@@ -182,7 +181,6 @@ export class SaleService {
         },
       });
     }
-    // TODO: create balance table and save the paid info
     return saleCreated;
   }
 
