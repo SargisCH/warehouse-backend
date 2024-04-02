@@ -1,4 +1,4 @@
-import { Prisma, User } from '@prisma/client';
+import { Prisma, Role, User } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import AWS_SDK from 'aws-sdk';
 
@@ -49,7 +49,7 @@ export class UserService {
     });
     await cognito.signUp(params).promise();
     return this.prisma.user.create({
-      data: { ...data, tenantId: tenant.id },
+      data: { ...data, tenantId: tenant.id, role: Role.ADMIN },
     });
   }
 

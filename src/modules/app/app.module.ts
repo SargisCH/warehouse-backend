@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { CorsModule } from '@nestjs/platform-express';
 
 import { UserModule } from '../user/user.module';
 import { InventoryModule } from '../inventory/inventory.module';

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Manager, Prisma, Schedule, User } from '@prisma/client';
+import { Manager, Prisma, Role, Schedule, User } from '@prisma/client';
 import { CognitoIdentityServiceProvider } from 'aws-sdk';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -87,6 +87,7 @@ export class ManagerService {
         companyName: tenant.name,
         tenantId: user.tenantId,
         password: 'WTest123!',
+        role: Role.MANAGER,
       },
     });
     console.log('user created');
