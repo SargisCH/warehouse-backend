@@ -10,8 +10,8 @@ export type productCreateType = {
   ingredients: Array<{
     id?: string;
     amount: number;
-    unit: string;
-    inventory: number;
+    amountUnit: string;
+    inventoryId: number;
   }>;
 };
 
@@ -88,10 +88,10 @@ export class ProductService {
         create: data.ingredients.map((ingredient) => {
           return {
             amount: ingredient.amount,
-            amountUnit: ingredient.unit,
+            amountUnit: ingredient.amountUnit,
             inventory: {
               connect: {
-                id: ingredient.inventory,
+                id: ingredient.inventoryId,
               },
             },
           };

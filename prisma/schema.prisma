@@ -72,7 +72,7 @@ model TransactionHistory {
 
 model Credit {
   id       Int       @id @default(autoincrement())
-  amount   Int
+  amount   Float
   sale     Sale?     @relation(fields: [saleId], references: [id])
   saleId   Int?      @unique
   currency String?   @default("AMD")
