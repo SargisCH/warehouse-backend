@@ -2,9 +2,7 @@ import { WeekDay } from 'src/shared/constants/global.constants';
 
 export type ClientDTO = {
   name: string;
-  companyCode: string;
-  companyType: string;
-  companyId: string;
+  legalName: string;
   accountNumber: string;
   bankAccountNumber: string;
   legalAddress: string;
@@ -12,7 +10,6 @@ export type ClientDTO = {
   phoneNumber: string;
   otherPhoneNumber: string;
   email: string;
-  contactPerson: string;
   taxId: string;
   managerId?: number;
   dayPlan?: WeekDay[];

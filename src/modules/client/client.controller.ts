@@ -78,17 +78,13 @@ export class ClientController {
     if (query.searchTerm) {
       where.OR = [
         { name: { contains: query.searchTerm } },
-        { companyCode: { contains: query.searchTerm } },
-        { companyType: { contains: query.searchTerm } },
-        { companyId: { contains: query.searchTerm } },
+        { legalName: { contains: query.searchTerm } },
         { accountNumber: { contains: query.searchTerm } },
-        { bankAccountNumber: { contains: query.searchTerm } },
         { legalAddress: { contains: query.searchTerm } },
         { address: { contains: query.searchTerm } },
         { phoneNumber: { contains: query.searchTerm } },
         { otherPhoneNumber: { contains: query.searchTerm } },
         { email: { contains: query.searchTerm } },
-        { contactPerson: { contains: query.searchTerm } },
         { taxId: { contains: query.searchTerm } },
       ];
     }

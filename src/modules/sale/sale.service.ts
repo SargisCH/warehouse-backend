@@ -96,7 +96,7 @@ export class SaleService {
     });
     await Promise.all(promises);
     const isPartailCredit = data.paymentType === PaymentTypeEnum.PARTIAL_CREDIT;
-    const products = await this.prisma.stockProduct.findMany({
+    const stockProducts = await this.prisma.stockProduct.findMany({
       where: { id: { in: data.saleItems.map((si) => si.stockProductId) } },
       include: { product: true },
     });
@@ -110,14 +110,15 @@ export class SaleService {
         saleItems: {
           createMany: {
             data: data.saleItems.map((si) => {
-              const productFound = products.find(
-                (p) => p.productId === si.stockProductId,
+              const productFound = stockProducts.find(
+                (stockProduct) => stockProduct.id === si.stockProductId,
               );
 
               if (!productFound) return si;
               if (si.price !== productFound.product.price) {
                 return { ...si, originalPrice: productFound.product.price };
               }
+              return si;
             }),
           },
         },

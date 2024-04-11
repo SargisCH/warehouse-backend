@@ -4,9 +4,16 @@ import {
   InventorySupplierOrder,
   InventorySupplierOrderItem,
   Prisma,
+  TransactionType,
+  User,
 } from '@prisma/client';
+import dayjs from 'dayjs';
 
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  InventorySupplierOrderDTO,
+  PaymentTypeEnum,
+} from './inventorySupplierOrder.dto';
 
 @Injectable()
 export class InventorySupplierService {
@@ -72,15 +79,86 @@ export class InventorySupplierService {
   //return (await this.prisma.partner_Item.deleteMany({ where })).count;
   //}
   async createOrder(
-    data: Prisma.InventorySupplierOrderCreateInput,
+    id: number,
+    user: User,
+    data: InventorySupplierOrderDTO,
   ): Promise<InventorySupplierOrder> {
-    return this.prisma.inventorySupplierOrder.create({
-      data,
+    const isPartailCredit = data.paymentType === PaymentTypeEnum.PARTIAL_CREDIT;
+    const createData = {
+      paymentType: data.paymentType,
+      partialCreditAmount: isPartailCredit ? data.partialCreditAmount : 0,
+      inventorySupplier: {
+        connect: { id: Number(id) },
+      },
+      orderDate: dayjs(data.orderDate, 'YYYY-MM-DD').toDate(),
+      orderItems: {
+        createMany: {
+          data: data.orderItems.map((item) => ({
+            inventoryId: item.inventoryId,
+            amount: item.amount,
+            amountUnit: item.amountUnit,
+            price: item.price,
+            priceUnit: item.priceUnit,
+          })),
+        },
+      },
+    };
+    const orderCreated = await this.prisma.inventorySupplierOrder.create({
+      data: createData,
       include: {
         inventorySupplier: true,
         orderItems: { include: { inventory: true } },
       },
     });
+    const amount = data.orderItems.reduce(
+      (acc, current) => acc + current.price * current.amount,
+      0,
+    );
+
+    const { tenantId } = user;
+
+    if (data.paymentType === PaymentTypeEnum.CREDIT) {
+      await this.prisma.credit.create({
+        data: {
+          inventorySupplierOrderId: Number(id),
+          amount,
+        },
+      });
+    } else if (isPartailCredit) {
+      if (!data.partialCreditAmount) {
+        throw new Error(
+          'The partial credit amount is mandatory when partial credit is selected as a payment method',
+        );
+      }
+      await this.prisma.tenant.update({
+        where: { id: tenantId },
+        data: {
+          balance: { decrement: amount - data.partialCreditAmount },
+        },
+      });
+      await this.prisma.credit.create({
+        data: {
+          amount: data.partialCreditAmount,
+          inventorySupplierOrderId: id,
+        },
+      });
+    } else if (data.paymentType === PaymentTypeEnum.CASH) {
+      await this.prisma.tenant.update({
+        where: { id: tenantId },
+        data: { balance: { decrement: amount } },
+      });
+    } else if (data.paymentType === PaymentTypeEnum.TRANSFER) {
+      await this.prisma.transactionHistory.create({
+        data: {
+          amount,
+          inventorySupplierId: id,
+          transactionType: TransactionType.OUT,
+        },
+      });
+    }
+
+    await this.syncInventory(data.orderItems);
+    return orderCreated;
   }
 
   async syncInventory(
@@ -92,9 +170,14 @@ export class InventorySupplierService {
       priceUnit: string;
     }>,
   ): Promise<void> {
-    const syncPromises = orderItems.map((orderItem) => {
+    const syncPromises = orderItems.map(async (orderItem) => {
+      const inv = await this.prisma.inventory.findUnique({
+        where: { id: orderItem.inventoryId },
+      });
+      const sum = inv.price * inv.amount + orderItem.amount * orderItem.price;
+      const avg = sum / (orderItem.amount + inv.amount);
       return this.prisma.inventory.update({
-        data: { amount: { increment: orderItem.amount } },
+        data: { amount: { increment: orderItem.amount }, avg },
         where: { id: orderItem.inventoryId },
       });
     });
@@ -108,8 +191,11 @@ export class InventorySupplierService {
     return res.count;
   }
 
-  async findOrderMany(): Promise<InventorySupplierOrder[] | null> {
+  async findOrderMany(
+    where: Prisma.InventorySupplierOrderWhereInput,
+  ): Promise<InventorySupplierOrder[] | null> {
     return this.prisma.inventorySupplierOrder.findMany({
+      where,
       include: {
         inventorySupplier: true,
         orderItems: { include: { inventory: true } },

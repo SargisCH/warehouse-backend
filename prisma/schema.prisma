@@ -71,15 +71,17 @@ model TransactionHistory {
 }
 
 model Credit {
-  id       Int       @id @default(autoincrement())
-  amount   Float
-  sale     Sale?     @relation(fields: [saleId], references: [id])
-  saleId   Int?      @unique
-  currency String?   @default("AMD")
-  client   Client    @relation(fields: [clientId], references: [id])
-  clientId Int
-  date     DateTime? @default(now())
-  Tenant   Tenant[]
+  id                       Int                     @id @default(autoincrement())
+  amount                   Float
+  sale                     Sale?                   @relation(fields: [saleId], references: [id])
+  saleId                   Int?                    @unique
+  inventorySupplierOrder   InventorySupplierOrder? @relation(fields: [inventorySupplierOrderId], references: [id])
+  inventorySupplierOrderId Int?                    @unique
+  currency                 String?                 @default("AMD")
+  client                   Client?                 @relation(fields: [clientId], references: [id])
+  clientId                 Int?
+  date                     DateTime?               @default(now())
+  Tenant                   Tenant[]
 }
 
 model Inventory {
@@ -89,6 +91,7 @@ model Inventory {
   amountUnit                 String
   price                      Float                        @default(0)
   currency                   String                       @default("AMD")
+  avg                        Float?                       @default(0)
   created_at                 DateTime                     @default(now())
   updated_at                 DateTime                     @updatedAt
   //Ingredient Ingredient?
@@ -161,17 +164,13 @@ model Ingredient {
 model Client {
   id                 Int                  @id @default(autoincrement())
   name               String               @unique
-  companyCode        String
-  companyType        String
-  companyId          String
+  legalName          String               @default("")
   accountNumber      String
-  bankAccountNumber  String
   legalAddress       String
   address            String
   phoneNumber        String
   otherPhoneNumber   String
   email              String
-  contactPerson      String
   taxId              String
   created_at         DateTime             @default(now())
   updated_at         DateTime             @updatedAt
@@ -216,6 +215,9 @@ model InventorySupplierOrder {
   orderItems          InventorySupplierOrderItem[]
   SaleItem            SaleItem[]
   TransactionHistory  TransactionHistory[]
+  partialCreditAmount Int                          @default(0)
+  paymentType         String                       @default("")
+  Credit              Credit?
 }
 
 model InventorySupplierOrderItem {

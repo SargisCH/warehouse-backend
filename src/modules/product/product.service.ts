@@ -19,6 +19,7 @@ export type productAddInStockType = {
   productId: number;
   inStock?: number;
   inStockUnit: string;
+  manualAdd?: boolean;
 };
 
 @Injectable()
@@ -109,16 +110,18 @@ export class ProductService {
       include: { ingredients: true },
     });
 
-    product.ingredients.forEach((ingredient) => {
-      invenoryUpdatePromises.push(
-        this.prisma.inventory.update({
-          where: { id: ingredient.inventoryId },
-          data: {
-            amount: { decrement: ingredient.amount * data.inStock },
-          },
-        }),
-      );
-    });
+    if (!data.manualAdd) {
+      product.ingredients.forEach((ingredient) => {
+        invenoryUpdatePromises.push(
+          this.prisma.inventory.update({
+            where: { id: ingredient.inventoryId },
+            data: {
+              amount: { decrement: ingredient.amount * data.inStock },
+            },
+          }),
+        );
+      });
+    }
 
     await Promise.all(invenoryUpdatePromises);
     const stockProductDB = await this.prisma.stockProduct.findFirst({
@@ -127,7 +130,7 @@ export class ProductService {
       },
     });
 
-    if (stockProductDB.id) {
+    if (stockProductDB?.id) {
       return this.prisma.stockProduct.update({
         where: { id: stockProductDB.id },
         data: {

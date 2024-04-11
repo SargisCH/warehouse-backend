@@ -9,17 +9,21 @@ import {
   Put,
   UseGuards,
   Req,
+  Query,
 } from '@nestjs/common';
 import {
   InventorySupplier as InventorySupplierModel,
   InventorySupplierOrder as InventorySupplierOrderModel,
   InventorySupplierOrderItem,
+  Prisma,
+  User,
 } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 
 import { AuthGuard } from '../../modules/auth/auth.guard';
 
 import { InventorySupplierService } from './inventorySupplier.service';
+import { InventorySupplierOrderDTO } from './inventorySupplierOrder.dto';
 
 @ApiTags('inventorySupplier')
 @Controller('/inventorySupplier')
@@ -27,10 +31,24 @@ export class InventorySupplierController {
   constructor(private inventorySupplierService: InventorySupplierService) {}
 
   @Get('/order')
-  async getAllInventorySupplierOrders(): Promise<
-    InventorySupplierOrderModel[]
-  > {
-    return this.inventorySupplierService.findOrderMany();
+  async getAllInventorySupplierOrders(
+    @Query() query: { inventory: string[] },
+  ): Promise<InventorySupplierOrderModel[]> {
+    console.log('-------------------------', query);
+    const where: Prisma.InventorySupplierOrderWhereInput = {};
+
+    if (query?.inventory) {
+      where.orderItems = {
+        some: {
+          inventoryId: {
+            in: query?.inventory?.map((invId) => Number(invId)) ?? [],
+          },
+        },
+      };
+    }
+    return this.inventorySupplierService.findOrderMany({
+      ...where,
+    });
   }
 
   @Get('/')
@@ -121,45 +139,21 @@ export class InventorySupplierController {
       return { message: 'Inventory supplier deletion failed' };
     }
   }
-
+  @UseGuards(AuthGuard)
   @Post('/:id/order/create')
   async createOrder(
+    @Req() request: Request,
     @Param('id') id: string,
     @Body()
-    supplierOrder: {
-      orderDate: Date;
-      status: string;
-      orderItems: Array<{
-        inventoryId: number;
-        amount: number;
-        amountUnit: string;
-        price: number;
-        priceUnit: string;
-      }>;
-    },
+    supplierOrder: InventorySupplierOrderDTO,
   ): Promise<InventorySupplierOrderModel> {
-    const { orderDate, status, orderItems } = supplierOrder;
-
-    if (!orderItems.length) throw new Error('At least one order is required');
-    const inventorySupplier = await this.inventorySupplierService.createOrder({
-      inventorySupplier: {
-        connect: { id: Number(id) },
-      },
-      orderDate: dayjs(orderDate, 'YYYY-MM-DD').toDate(),
-      status,
-      orderItems: {
-        createMany: {
-          data: orderItems.map((item) => ({
-            inventoryId: item.inventoryId,
-            amount: item.amount,
-            amountUnit: item.amountUnit,
-            price: item.price,
-            priceUnit: item.priceUnit,
-          })),
-        },
-      },
-    });
-    await this.inventorySupplierService.syncInventory(orderItems);
+    if (!supplierOrder.orderItems.length)
+      throw new Error('At least one order is required');
+    const inventorySupplier = await this.inventorySupplierService.createOrder(
+      Number(id),
+      (request as any).user as User,
+      supplierOrder,
+    );
 
     return inventorySupplier;
   }
@@ -168,18 +162,7 @@ export class InventorySupplierController {
     @Param('id') id: string,
     @Param('orderId') orderId: string,
     @Body()
-    supplierOrder: {
-      orderDate: Date;
-      status: string;
-      orderItems: Array<{
-        id?: number;
-        inventoryId: number;
-        amount: number;
-        amountUnit: string;
-        price: number;
-        priceUnit: string;
-      }>;
-    },
+    supplierOrder: InventorySupplierOrderDTO,
   ): Promise<InventorySupplierOrderModel> {
     const { orderDate, status, orderItems } = supplierOrder;
 

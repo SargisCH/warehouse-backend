@@ -50,8 +50,16 @@ export class ClientService {
   async create(data: ClientDTO): Promise<Client> {
     const clientCreateData = { ...data };
     delete clientCreateData.dayPlan;
+    delete clientCreateData.managerId;
+    const updateQuery: Prisma.ClientCreateInput = {
+      ...clientCreateData,
+    };
+
+    if (data.managerId) {
+      updateQuery.manager = { connect: { id: Number(data.managerId) ?? null } };
+    }
     const client = await this.prisma.client.create({
-      data: clientCreateData,
+      data: updateQuery,
     });
 
     if (data.managerId) {
