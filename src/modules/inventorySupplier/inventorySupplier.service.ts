@@ -4,10 +4,12 @@ import {
   InventorySupplierOrder,
   InventorySupplierOrderItem,
   Prisma,
+  TransactionStatus,
   TransactionType,
   User,
 } from '@prisma/client';
 import dayjs from 'dayjs';
+import { BalanceHistoryService } from '../balanceHistory/balanceHistory.service';
 
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -17,7 +19,10 @@ import {
 
 @Injectable()
 export class InventorySupplierService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private balanceHistoryService: BalanceHistoryService,
+  ) {}
 
   async findOne(
     inventorySupplierWhereUniqueInput: Prisma.InventorySupplierWhereUniqueInput,
@@ -116,6 +121,9 @@ export class InventorySupplierService {
     );
 
     const { tenantId } = user;
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: user.tenantId },
+    });
 
     if (data.paymentType === PaymentTypeEnum.CREDIT) {
       await this.prisma.credit.create({
@@ -130,6 +138,23 @@ export class InventorySupplierService {
           'The partial credit amount is mandatory when partial credit is selected as a payment method',
         );
       }
+      await this.balanceHistoryService.create({
+        direction: TransactionType.OUT,
+        amount: amount - data.partialCreditAmount,
+        date: new Date(),
+        status: TransactionStatus.FINISHED,
+        order: {
+          connect: {
+            id: orderCreated.id,
+          },
+        },
+        inventorySupplier: {
+          connect: { id: orderCreated.inventorySupplierId },
+        },
+        tenant: { connect: { id: user.tenantId } },
+        before: tenant.balance,
+        result: tenant.balance - amount - data.partialCreditAmount,
+      });
       await this.prisma.tenant.update({
         where: { id: tenantId },
         data: {
@@ -143,6 +168,23 @@ export class InventorySupplierService {
         },
       });
     } else if (data.paymentType === PaymentTypeEnum.CASH) {
+      await this.balanceHistoryService.create({
+        direction: TransactionType.OUT,
+        amount,
+        date: new Date(),
+        status: TransactionStatus.FINISHED,
+        order: {
+          connect: {
+            id: orderCreated.id,
+          },
+        },
+        inventorySupplier: {
+          connect: { id: orderCreated.inventorySupplierId },
+        },
+        tenant: { connect: { id: user.tenantId } },
+        before: tenant.balance,
+        result: tenant.balance - amount,
+      });
       await this.prisma.tenant.update({
         where: { id: tenantId },
         data: { balance: { decrement: amount } },

@@ -17,6 +17,7 @@ import { ClientModule } from '../client/client.module';
 import { CreditModule } from '../credit/credit.module';
 import { TransactionHistoryModule } from '../transactionHistory/transactionHistory.module';
 import { ManagerModule } from '../manager/manager.module';
+import { BalanceHistory } from '../balanceHistory/balanceHistory.module';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -37,6 +38,7 @@ import { AppService } from './app.service';
     CreditModule,
     TransactionHistoryModule,
     ManagerModule,
+    BalanceHistory,
   ],
   controllers: [AppController],
   providers: [AppService],

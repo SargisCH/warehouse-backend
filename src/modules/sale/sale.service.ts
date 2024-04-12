@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { Sale, Prisma, User, TransactionType } from '@prisma/client';
+import {
+  Sale,
+  Prisma,
+  User,
+  TransactionType,
+  TransactionStatus,
+} from '@prisma/client';
+import { BalanceHistoryService } from '../balanceHistory/balanceHistory.service';
 
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -25,7 +32,10 @@ export interface SaleAPIType {
 
 @Injectable()
 export class SaleService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly balanceHistoryService: BalanceHistoryService,
+  ) {}
 
   async findOne(
     SaleCategoryWhereUniqueInput: Prisma.SaleWhereUniqueInput,
@@ -100,6 +110,9 @@ export class SaleService {
       where: { id: { in: data.saleItems.map((si) => si.stockProductId) } },
       include: { product: true },
     });
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: user.tenantId },
+    });
     const saleCreated = await this.prisma.sale.create({
       data: {
         paymentType: data.paymentType,
@@ -150,6 +163,23 @@ export class SaleService {
           'The partial credit amount is mandatory when partial credit is selected as a payment method',
         );
       }
+      await this.balanceHistoryService.create({
+        direction: TransactionType.IN,
+        amount: totalAmount - data.partialCreditAmount,
+        date: new Date(),
+        status: TransactionStatus.FINISHED,
+        sale: {
+          connect: {
+            id: saleCreated.id,
+          },
+        },
+        client: {
+          connect: { id: saleCreated.clientId },
+        },
+        tenant: { connect: { id: user.tenantId } },
+        before: tenant.balance,
+        result: totalAmount - data.partialCreditAmount + tenant.balance,
+      });
       await this.prisma.tenant.update({
         where: { id: tenantId },
         data: {
@@ -168,6 +198,24 @@ export class SaleService {
         (acc, s) => s.price * s.amount + acc,
         0,
       );
+
+      await this.balanceHistoryService.create({
+        direction: TransactionType.IN,
+        amount: totalAmount,
+        date: new Date(),
+        status: TransactionStatus.FINISHED,
+        sale: {
+          connect: {
+            id: saleCreated.id,
+          },
+        },
+        client: {
+          connect: { id: saleCreated.clientId },
+        },
+        tenant: { connect: { id: user.tenantId } },
+        before: tenant.balance,
+        result: totalAmount + tenant.balance,
+      });
       await this.prisma.tenant.update({
         where: { id: tenantId },
         data: { balance: { increment: totalAmount } },
@@ -182,6 +230,7 @@ export class SaleService {
         },
       });
     }
+
     return saleCreated;
   }
 
