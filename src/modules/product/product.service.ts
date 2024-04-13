@@ -128,6 +128,7 @@ export class ProductService {
       where: {
         productId: data.productId,
       },
+      rejectOnNotFound: false,
     });
 
     if (stockProductDB?.id) {
