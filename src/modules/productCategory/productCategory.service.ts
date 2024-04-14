@@ -10,9 +10,8 @@ export class ProductCategoryService {
   async findOne(
     productCategoryWhereUniqueInput: Prisma.ProductCategoryWhereUniqueInput,
   ): Promise<ProductCategory | null> {
-    return this.prisma.product.findUnique({
+    return this.prisma.productCategory.findUnique({
       where: productCategoryWhereUniqueInput,
-      include: { ingredients: true },
     });
   }
 
@@ -42,8 +41,8 @@ export class ProductCategoryService {
   }
 
   async update(params: {
-    where: Prisma.ProductWhereUniqueInput;
-    data: Prisma.ProductUpdateInput;
+    where: Prisma.ProductCategoryWhereUniqueInput;
+    data: Prisma.ProductCategoryUpdateInput;
   }): Promise<ProductCategory> {
     const { data, where } = params;
     return this.prisma.productCategory.update({
