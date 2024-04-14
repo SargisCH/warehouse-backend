@@ -91,7 +91,7 @@ export class ProductController {
       price: number;
       priceUnit: string;
       inventoryId: string;
-      ingredients: Array<{ inventory: number; amount: number; unit: string }>;
+      ingredients: Array<{ inventoryId: number; amount: number; unit: string }>;
     },
   ): Promise<ProductModel> {
     const ingrediensUpdate = productData.ingredients.map((ing) => {
@@ -99,7 +99,7 @@ export class ProductController {
         where: {
           productId_inventoryId: {
             productId: Number(id),
-            inventoryId: ing.inventory,
+            inventoryId: ing.inventoryId,
           },
         },
         data: { amount: ing.amount, amountUnit: ing.unit },
