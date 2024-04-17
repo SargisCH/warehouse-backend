@@ -1,4 +1,4 @@
-import { Prisma, Role, Tenant, User } from '@prisma/client';
+import { Prisma, Role, Tenant, TransactionType, User } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import AWS_SDK from 'aws-sdk';
 
@@ -77,5 +77,30 @@ export class UserService {
     return this.prisma.user.delete({
       where,
     });
+  }
+  async updateTenantBalance(
+    tenantId: number,
+    direction: TransactionType,
+    amount: number,
+  ): Promise<void> {
+    if (direction === TransactionType.IN) {
+      await this.prisma.tenant.update({
+        where: {
+          id: tenantId,
+        },
+        data: {
+          balance: { increment: amount },
+        },
+      });
+    } else {
+      await this.prisma.tenant.update({
+        where: {
+          id: tenantId,
+        },
+        data: {
+          balance: { decrement: amount },
+        },
+      });
+    }
   }
 }

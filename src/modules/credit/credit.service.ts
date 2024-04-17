@@ -45,7 +45,6 @@ export class CreditService {
     data: Prisma.CreditUpdateInput;
   }): Promise<Credit> {
     const { data, where } = params;
-    console.log('params', params);
     return this.prisma.credit.update({
       data,
       where,

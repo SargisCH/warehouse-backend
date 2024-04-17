@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "Inventory" ADD COLUMN     "avg" DOUBLE PRECISION DEFAULT 0;

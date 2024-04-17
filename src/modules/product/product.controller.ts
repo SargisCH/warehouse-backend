@@ -15,6 +15,7 @@ import {
   productCreateType,
   ProductService,
 } from './product.service';
+import { StockProductDTO } from './product.dto';
 
 @ApiTags('product')
 @Controller('/product')
@@ -75,9 +76,21 @@ export class ProductController {
   @Post('addInStock')
   async addInStock(
     @Body()
-    postData: productAddInStockType,
+    postData: StockProductDTO,
   ): Promise<StockProduct> {
     return this.productService.addInStock(postData);
+  }
+  @Get('/stockProduct/:id')
+  async getStockProductById(@Param('id') id: string): Promise<StockProduct> {
+    return this.productService.findStockProductById({ id: Number(id) });
+  }
+  @Put('/stockProduct/:id')
+  async updateStockProductById(
+    @Param('id') id: string,
+    @Body()
+    stockProductDto: StockProductDTO,
+  ): Promise<StockProduct> {
+    return this.productService.updateStockProduct(stockProductDto);
   }
 
   @Put('/:id')

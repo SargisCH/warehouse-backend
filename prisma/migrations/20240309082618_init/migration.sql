@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "TransactionHistory" ADD COLUMN     "date" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP;

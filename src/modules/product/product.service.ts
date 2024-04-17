@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Product, Prisma, StockProduct } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { StockProductDTO } from './product.dto';
 
 export type productCreateType = {
   name: string;
@@ -103,14 +104,14 @@ export class ProductService {
       data: productCreateInput,
     });
   }
-  async addInStock(data: productAddInStockType) {
+  async addInStock(data: StockProductDTO) {
     const invenoryUpdatePromises = [];
     const product = await this.prisma.product.findUnique({
       where: { id: data.productId },
       include: { ingredients: true },
     });
 
-    if (!data.manualAdd) {
+    if (!data.noCalculation) {
       product.ingredients.forEach((ingredient) => {
         invenoryUpdatePromises.push(
           this.prisma.inventory.update({
@@ -146,6 +147,38 @@ export class ProductService {
         inStockUnit: data.inStockUnit,
       },
     });
+  }
+  async findStockProductById(
+    stockProductWhereUniqueInput: Prisma.StockProductWhereUniqueInput,
+  ): Promise<StockProduct | null> {
+    return this.prisma.stockProduct.findUnique({
+      where: stockProductWhereUniqueInput,
+      include: { product: true },
+    });
+  }
+  async updateStockProduct(
+    stockProductDto: StockProductDTO,
+  ): Promise<StockProduct | null> {
+    if (stockProductDto.noCalculation) {
+      const data = {
+        ...stockProductDto,
+      };
+      delete data.noCalculation;
+      delete data.productId;
+      console.log('data', data);
+      return this.prisma.stockProduct.update({
+        where: {
+          id: stockProductDto.id,
+        },
+        data,
+      });
+    } else {
+      delete stockProductDto.noCalculation;
+      delete stockProductDto.productId;
+      return this.addInStock({
+        ...stockProductDto,
+      });
+    }
   }
 
   async update(params: {
