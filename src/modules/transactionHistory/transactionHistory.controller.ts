@@ -20,6 +20,8 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 
 import { ManagerService } from '../manager/manager.service';
+import { BalanceHistoryService } from '../balanceHistory/balanceHistory.service';
+import { UserService } from '../user/user.service';
 import { AuthGuard } from '../auth/auth.guard';
 
 import { TransactionHistoryService } from './transactionHistory.service';
@@ -40,6 +42,8 @@ export class TransactionHistoryController {
   constructor(
     private transactionHistoryService: TransactionHistoryService,
     private managerService: ManagerService,
+    private balanceHistoryService: BalanceHistoryService,
+    private userService: UserService,
   ) {}
 
   @Get('/')
@@ -156,20 +160,32 @@ export class TransactionHistoryController {
         },
       };
     }
-    console.log(
-      'statuses',
-      transactionDB.status,
-      TransactionStatus.FINISHED,
-      transactionHistoryData.status,
-    );
     if (
       transactionDB.status !== transactionHistoryData.status &&
       transactionHistoryData.status === TransactionStatus.FINISHED
     ) {
+      const tenant = await this.userService.findTenant({ id: user.tenantId });
       await this.transactionHistoryService.handleBalanceUpdate(
         user.tenantId,
         transactionHistoryData.amount,
+        transactionHistoryData.transactionType,
       );
+      await this.balanceHistoryService.create({
+        amount: transactionHistoryData.amount,
+        direction: transactionHistoryData.transactionType,
+        status: TransactionStatus.FINISHED,
+        date: new Date(),
+        before: tenant.balance,
+        result:
+          transactionHistoryData.transactionType === TransactionType.IN
+            ? tenant.balance + transactionHistoryData.amount
+            : tenant.balance - transactionHistoryData.amount,
+        tenant: {
+          connect: {
+            id: Number(tenant.id),
+          },
+        },
+      });
     }
     return this.transactionHistoryService.update({
       where: { id: Number(id) },

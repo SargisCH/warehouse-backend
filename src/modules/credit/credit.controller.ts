@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import {
   Credit as CreditModel,
+  CreditType,
   Manager,
   Prisma,
   Role,
@@ -92,6 +93,7 @@ export class CreditController {
   ): Promise<CreditModel> {
     return this.creditService.create({
       amount: creditData.amount,
+      type: CreditType.TO_PAY,
       client: {
         connect: {
           id: creditData.clientId,

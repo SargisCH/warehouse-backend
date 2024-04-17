@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  CreditType,
   InventorySupplier,
   InventorySupplierOrder,
   InventorySupplierOrderItem,
@@ -130,6 +131,7 @@ export class InventorySupplierService {
         data: {
           inventorySupplierOrderId: Number(id),
           amount,
+          type: CreditType.TO_PAY,
         },
       });
     } else if (isPartailCredit) {
@@ -165,6 +167,7 @@ export class InventorySupplierService {
         data: {
           amount: data.partialCreditAmount,
           inventorySupplierOrderId: id,
+          type: CreditType.TO_PAY,
         },
       });
     } else if (data.paymentType === PaymentTypeEnum.CASH) {

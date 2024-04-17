@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, TransactionHistory } from '@prisma/client';
+import { Prisma, TransactionHistory, TransactionType } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -54,14 +54,19 @@ export class TransactionHistoryService {
   async handleBalanceUpdate(
     tenantId: number,
     transactionAmount: number,
+    transactionType: TransactionType,
   ): Promise<void> {
-    console.log('handle balance update', tenantId, transactionAmount);
     await this.prisma.tenant.update({
       where: { id: tenantId },
       data: {
-        balance: {
-          increment: transactionAmount,
-        },
+        balance:
+          transactionType === TransactionType.IN
+            ? {
+                increment: transactionAmount,
+              }
+            : {
+                decrement: transactionAmount,
+              },
       },
     });
   }

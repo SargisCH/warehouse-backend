@@ -5,6 +5,7 @@ import {
   User,
   TransactionType,
   TransactionStatus,
+  CreditType,
 } from '@prisma/client';
 import { BalanceHistoryService } from '../balanceHistory/balanceHistory.service';
 
@@ -150,6 +151,7 @@ export class SaleService {
           saleId: saleCreated.id,
           clientId: data.clientId,
           amount,
+          type: CreditType.TO_RECEIVE,
         },
       });
     } else if (isPartailCredit) {
@@ -191,6 +193,7 @@ export class SaleService {
           amount: data.partialCreditAmount,
           saleId: saleCreated.id,
           clientId: data.clientId,
+          type: CreditType.TO_RECEIVE,
         },
       });
     } else if (data.paymentType === PaymentTypeEnum.CASH) {

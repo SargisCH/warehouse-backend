@@ -1,4 +1,4 @@
-import { Prisma, Role, User } from '@prisma/client';
+import { Prisma, Role, Tenant, User } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import AWS_SDK from 'aws-sdk';
 
@@ -14,6 +14,15 @@ export class UserService {
   ): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: userWhereUniqueInput,
+      include: { tenant: true },
+    });
+  }
+
+  async findTenant(
+    tenantWhereUniqueInput: Prisma.TenantWhereUniqueInput,
+  ): Promise<Tenant | null> {
+    return this.prisma.tenant.findUnique({
+      where: tenantWhereUniqueInput,
     });
   }
 

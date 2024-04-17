@@ -12,6 +12,11 @@ enum TransactionType {
   OUT
 }
 
+enum CreditType {
+  TO_PAY
+  TO_RECEIVE
+}
+
 enum Role {
   ADMIN
   MANAGER
@@ -82,6 +87,8 @@ model Credit {
   client                   Client?                 @relation(fields: [clientId], references: [id])
   clientId                 Int?
   date                     DateTime?               @default(now())
+  type                     CreditType
+  status                   TransactionStatus?      @default(PENDING)
   Tenant                   Tenant[]
 }
 
