@@ -7,10 +7,14 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
-import { Inventory as InventoryModel } from '@prisma/client';
+import {
+  Inventory as InventoryModel,
+  InventoryEntryHistory as InventoryEntryHistoryModel,
+} from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 
 import { InventoryService } from './inventory.service';
+import { InventoryEntry } from './inventory.DTO';
 
 @ApiTags('inventory')
 @Controller('/inventory')
@@ -60,18 +64,22 @@ export class InventoryController {
     @Body()
     postData: {
       name: string;
-      amount?: number;
-      amountUnit: string;
       price: number;
     },
   ): Promise<InventoryModel> {
-    const { name, amount, amountUnit, price } = postData;
+    const { name, price } = postData;
     return this.inventoryService.create({
       name,
-      amount,
-      amountUnit,
       price,
     });
+  }
+
+  @Post('entry/create')
+  async createInventoryEntry(
+    @Body()
+    inventoryEntry: InventoryEntry,
+  ): Promise<InventoryEntryHistoryModel> {
+    return this.inventoryService.createEntry(inventoryEntry);
   }
 
   @Put('/:id')

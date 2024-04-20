@@ -112,18 +112,52 @@ export class ProductService {
 
     if (!data.manualAdd) {
       product.ingredients.forEach((ingredient) => {
-        invenoryUpdatePromises.push(
-          this.prisma.inventory.update({
-            where: { id: ingredient.inventoryId },
-            data: {
-              amount: { decrement: ingredient.amount * data.inStock },
-            },
-          }),
-        );
+        invenoryUpdatePromises.push(async () => {
+          const inventoryHistoryRecords =
+            await this.prisma.inventoryEntryHistory.findMany({
+              where: {
+                inventoryEntryItems: {
+                  some: { inventoryId: ingredient.inventoryId },
+                },
+              },
+              include: { inventoryEntryItems: true },
+              orderBy: { date: 'asc' },
+            });
+          let amountLeft = ingredient.amount * data.inStock;
+          for (let inventoryRecord of inventoryHistoryRecords) {
+            let amountToDecrement = amountLeft || 0;
+            const inventoryHistoryItem =
+              inventoryRecord.inventoryEntryItems.find(
+                (ei) => ei.inventoryId === ingredient.inventoryId,
+              );
+            if (inventoryHistoryItem.amount >= amountLeft) {
+              amountToDecrement = amountLeft;
+              amountLeft = 0;
+            } else if (inventoryHistoryItem.amount < amountLeft) {
+              amountToDecrement = inventoryHistoryItem.amount;
+              amountLeft = amountLeft - inventoryHistoryItem.amount;
+            }
+            const dataToUpdate = {
+              inventoryEntryItems: {
+                update: {
+                  where: { id: inventoryHistoryItem.id },
+                  data: {
+                    amount: { decrement: amountToDecrement },
+                  },
+                },
+              },
+            };
+
+            await this.prisma.inventoryEntryHistory.update({
+              where: { id: inventoryRecord.id },
+              data: dataToUpdate,
+            });
+          }
+        });
       });
     }
 
-    await Promise.all(invenoryUpdatePromises);
+    await Promise.all(invenoryUpdatePromises.map((f) => f()));
     const stockProductDB = await this.prisma.stockProduct.findFirst({
       where: {
         productId: data.productId,

@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { Inventory, Prisma } from '@prisma/client';
+import { Inventory, InventoryEntryHistory, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { InventoryEntry } from './inventory.DTO';
 
 @Injectable()
 export class InventoryService {
@@ -47,6 +48,36 @@ export class InventoryService {
     return this.prisma.inventory.create({
       data,
     });
+  }
+
+  async createEntry(data: InventoryEntry): Promise<InventoryEntryHistory> {
+    const createData: Prisma.InventoryEntryHistoryCreateInput = {
+      inventoryEntryItems: {
+        create: data.inventoryEntryItems.map((inventoryEntryItem) => {
+          return {
+            amount: inventoryEntryItem.amount,
+            amountUnit: inventoryEntryItem.amountUnit,
+            price: inventoryEntryItem.price,
+            inventory: {
+              connect: {
+                id: inventoryEntryItem.inventoryId,
+              },
+            },
+          };
+        }),
+      },
+    };
+    if (data.date) {
+      createData.date = data.date;
+    }
+    if (data.inventorySupplierId) {
+      createData.inventorySupplier = {
+        connect: {
+          id: data.inventorySupplierId,
+        },
+      };
+    }
+    return this.prisma.inventoryEntryHistory.create({ data: createData });
   }
 
   async update(params: {
