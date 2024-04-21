@@ -28,6 +28,13 @@ export class InventoryController {
   }> {
     return this.inventoryService.findAll({});
   }
+  @Get('/entry')
+  async getEntries(): Promise<{
+    inventoryEntries: InventoryEntry[];
+    totalWorth: number;
+  }> {
+    return this.inventoryService.findAllEntries({});
+  }
 
   @Get('/:id')
   async getInventoryById(@Param('id') id: string): Promise<InventoryModel> {

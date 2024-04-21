@@ -24,12 +24,6 @@ export class InventoryService {
     orderBy?: Prisma.InventoryOrderByWithRelationInput;
   }): Promise<{ inventories: Inventory[]; totalWorth: number }> {
     const { skip, take, cursor, where, orderBy } = params;
-    const query = Prisma.sql`
-      SELECT SUM(amount * price) AS total_price
-      FROM public."Inventory";
-    `;
-    const result = await this.prisma.$queryRaw(query);
-    const totalWorth = result[0].total_price || 0;
 
     const inventoryData = await this.prisma.inventory.findMany({
       skip,
@@ -39,7 +33,7 @@ export class InventoryService {
       orderBy,
     });
     return {
-      totalWorth,
+      totalWorth: 0,
       inventories: inventoryData,
     };
   }
@@ -48,6 +42,32 @@ export class InventoryService {
     return this.prisma.inventory.create({
       data,
     });
+  }
+
+  async findAllEntries(params: {
+    skip?: number;
+    take?: number;
+    cursor?: Prisma.InventoryEntryHistoryWhereUniqueInput;
+    where?: Prisma.InventoryEntryHistoryWhereInput;
+    orderBy?: Prisma.InventoryEntryHistoryOrderByWithRelationInput;
+  }): Promise<{ inventoryEntries: InventoryEntry[]; totalWorth: number }> {
+    const { skip, take, cursor, where, orderBy } = params;
+
+    const inventoryData = await this.prisma.inventoryEntryHistory.findMany({
+      skip,
+      take,
+      cursor,
+      where,
+      orderBy,
+      include: {
+        inventorySupplier: true,
+        inventoryEntryItems: { include: { inventory: true } },
+      },
+    });
+    return {
+      totalWorth: 0,
+      inventoryEntries: inventoryData,
+    };
   }
 
   async createEntry(data: InventoryEntry): Promise<InventoryEntryHistory> {
