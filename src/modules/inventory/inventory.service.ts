@@ -22,7 +22,7 @@ export class InventoryService {
     cursor?: Prisma.InventoryWhereUniqueInput;
     where?: Prisma.InventoryWhereInput;
     orderBy?: Prisma.InventoryOrderByWithRelationInput;
-  }): Promise<{ inventories: Inventory[]; totalWorth: number }> {
+  }): Promise<Inventory[]> {
     const { skip, take, cursor, where, orderBy } = params;
 
     const inventoryData = await this.prisma.inventory.findMany({
@@ -31,11 +31,9 @@ export class InventoryService {
       cursor,
       where,
       orderBy,
+      include: { InventoryEntryHistoryItem: true },
     });
-    return {
-      totalWorth: 0,
-      inventories: inventoryData,
-    };
+    return inventoryData;
   }
 
   async create(data: Prisma.InventoryCreateInput): Promise<Inventory> {

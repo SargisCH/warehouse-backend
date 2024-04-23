@@ -10,11 +10,12 @@ import {
 import {
   Inventory as InventoryModel,
   InventoryEntryHistory as InventoryEntryHistoryModel,
+  InventoryEntryItem,
 } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 
 import { InventoryService } from './inventory.service';
-import { InventoryEntry } from './inventory.DTO';
+import { InventoryEntry, InventoryModelResponse } from './inventory.DTO';
 
 @ApiTags('inventory')
 @Controller('/inventory')
@@ -23,10 +24,30 @@ export class InventoryController {
 
   @Get('/')
   async getAllInventory(): Promise<{
-    inventories: InventoryModel[];
+    inventories: InventoryModelResponse[];
     totalWorth: number;
   }> {
-    return this.inventoryService.findAll({});
+    const inventoryData = (await this.inventoryService.findAll(
+      {},
+    )) as InventoryModelResponse[];
+    let totalWorth = 0;
+    inventoryData.forEach((inv) => {
+      let sumPrice = 0;
+      let sumAmount = 0;
+
+      inv.InventoryEntryHistoryItem.forEach((invEn: InventoryEntryItem) => {
+        sumPrice += invEn.amount * invEn.price;
+        sumAmount += invEn.amount;
+      });
+      inv.avg = sumPrice / sumAmount;
+      inv.amount = sumAmount;
+
+      totalWorth += sumPrice;
+    });
+    return {
+      inventories: inventoryData,
+      totalWorth,
+    };
   }
   @Get('/entry')
   async getEntries(): Promise<{
