@@ -3,6 +3,7 @@ import { BalanceHistoryService } from '../balanceHistory/balanceHistory.service'
 
 import { PrismaService } from '../prisma/prisma.service';
 import { UserService } from '../user/user.service';
+import { InventoryService } from '../inventory/inventory.service';
 
 import { InventorySupplierController } from './inventorySupplier.controller';
 import { InventorySupplierService } from './inventorySupplier.service';
@@ -15,6 +16,7 @@ import { InventorySupplierService } from './inventorySupplier.service';
     PrismaService,
     UserService,
     BalanceHistoryService,
+    InventoryService,
   ],
   exports: [InventorySupplierService],
 })

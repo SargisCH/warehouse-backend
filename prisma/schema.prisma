@@ -95,17 +95,14 @@ model Credit {
 model Inventory {
   id                         Int                          @id @default(autoincrement())
   name                       String                       @unique
-  amount                     Float
-  amountUnit                 String
   price                      Float                        @default(0)
-  currency                   String                       @default("AMD")
-  avg                        Float?                       @default(0)
   created_at                 DateTime                     @default(now())
   updated_at                 DateTime                     @updatedAt
   //Ingredient Ingredient?
   Ingredient                 Ingredient[]
   InventorySupplierOrderItem InventorySupplierOrderItem[]
   SaleItem                   SaleItem[]
+  InventoryEntryHistoryItem  InventoryEntryItem[]
 }
 
 model Customer {
@@ -204,14 +201,16 @@ model Manager {
 }
 
 model InventorySupplier {
-  id                 Int                      @id @default(autoincrement())
-  name               String                   @unique
-  created_at         DateTime                 @default(now())
-  updated_at         DateTime                 @updatedAt
-  orders             InventorySupplierOrder[]
-  deleted            Boolean                  @default(false)
-  TransactionHistory TransactionHistory[]
-  BalanceHistory     BalanceHistory[]
+  id                    Int                      @id @default(autoincrement())
+  name                  String                   @unique
+  created_at            DateTime                 @default(now())
+  updated_at            DateTime                 @updatedAt
+  orders                InventorySupplierOrder[]
+  deleted               Boolean                  @default(false)
+  TransactionHistory    TransactionHistory[]
+  BalanceHistory        BalanceHistory[]
+  InventoryEntryItem    InventoryEntryItem[]
+  InventoryEntryHistory InventoryEntryHistory[]
 }
 
 model InventorySupplierOrder {
@@ -309,4 +308,25 @@ model BalanceHistory {
   tenantId            Int
   result              Float
   before              Float
+}
+
+model InventoryEntryHistory {
+  id                  Int                  @id @default(autoincrement())
+  date                DateTime?            @default(now())
+  inventoryEntryItems InventoryEntryItem[]
+  inventorySupplier   InventorySupplier?   @relation(fields: [inventorySupplierId], references: [id])
+  inventorySupplierId Int?
+}
+
+model InventoryEntryItem {
+  id                  Int                   @id @default(autoincrement())
+  inventoryEntry      InventoryEntryHistory @relation(fields: [inventoryEntryId], references: [id])
+  inventoryEntryId    Int
+  inventory           Inventory             @relation(fields: [inventoryId], references: [id])
+  inventoryId         Int
+  amount              Float
+  amountUnit          String
+  price               Float
+  InventorySupplier   InventorySupplier?    @relation(fields: [inventorySupplierId], references: [id])
+  inventorySupplierId Int?
 }

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   CreditType,
+  InventoryEntryHistory,
   InventorySupplier,
   InventorySupplierOrder,
   InventorySupplierOrderItem,
@@ -11,6 +12,7 @@ import {
 } from '@prisma/client';
 import dayjs from 'dayjs';
 import { BalanceHistoryService } from '../balanceHistory/balanceHistory.service';
+import { InventoryService } from '../inventory/inventory.service';
 
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -23,6 +25,7 @@ export class InventorySupplierService {
   constructor(
     private prisma: PrismaService,
     private balanceHistoryService: BalanceHistoryService,
+    private inventoryService: InventoryService,
   ) {}
 
   async findOne(
@@ -202,11 +205,12 @@ export class InventorySupplierService {
       });
     }
 
-    await this.syncInventory(data.orderItems);
+    await this.syncInventory(orderCreated.inventorySupplierId, data.orderItems);
     return orderCreated;
   }
 
   async syncInventory(
+    inventorySupplierId: number,
     orderItems: Array<{
       inventoryId: number;
       amount: number;
@@ -215,18 +219,15 @@ export class InventorySupplierService {
       priceUnit: string;
     }>,
   ): Promise<void> {
-    const syncPromises = orderItems.map(async (orderItem) => {
-      const inv = await this.prisma.inventory.findUnique({
-        where: { id: orderItem.inventoryId },
-      });
-      const sum = inv.price * inv.amount + orderItem.amount * orderItem.price;
-      const avg = sum / (orderItem.amount + inv.amount);
-      return this.prisma.inventory.update({
-        data: { amount: { increment: orderItem.amount }, avg },
-        where: { id: orderItem.inventoryId },
-      });
+    await this.inventoryService.createEntry({
+      inventorySupplierId,
+      inventoryEntryItems: orderItems.map((oi) => ({
+        amount: oi.amount,
+        amountUnit: oi.amountUnit,
+        price: oi.price,
+        inventoryId: oi.inventoryId,
+      })),
     });
-    await Promise.all(syncPromises);
   }
 
   async createOrderMany(

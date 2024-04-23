@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { Inventory, Prisma } from '@prisma/client';
+import { Inventory, InventoryEntryHistory, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { InventoryEntry } from './inventory.DTO';
 
 @Injectable()
 export class InventoryService {
@@ -21,14 +22,8 @@ export class InventoryService {
     cursor?: Prisma.InventoryWhereUniqueInput;
     where?: Prisma.InventoryWhereInput;
     orderBy?: Prisma.InventoryOrderByWithRelationInput;
-  }): Promise<{ inventories: Inventory[]; totalWorth: number }> {
+  }): Promise<Inventory[]> {
     const { skip, take, cursor, where, orderBy } = params;
-    const query = Prisma.sql`
-      SELECT SUM(amount * price) AS total_price
-      FROM public."Inventory";
-    `;
-    const result = await this.prisma.$queryRaw(query);
-    const totalWorth = result[0].total_price || 0;
 
     const inventoryData = await this.prisma.inventory.findMany({
       skip,
@@ -36,17 +31,71 @@ export class InventoryService {
       cursor,
       where,
       orderBy,
+      include: { InventoryEntryHistoryItem: true },
     });
-    return {
-      totalWorth,
-      inventories: inventoryData,
-    };
+    return inventoryData;
   }
 
   async create(data: Prisma.InventoryCreateInput): Promise<Inventory> {
     return this.prisma.inventory.create({
       data,
     });
+  }
+
+  async findAllEntries(params: {
+    skip?: number;
+    take?: number;
+    cursor?: Prisma.InventoryEntryHistoryWhereUniqueInput;
+    where?: Prisma.InventoryEntryHistoryWhereInput;
+    orderBy?: Prisma.InventoryEntryHistoryOrderByWithRelationInput;
+  }): Promise<{ inventoryEntries: InventoryEntry[]; totalWorth: number }> {
+    const { skip, take, cursor, where, orderBy } = params;
+
+    const inventoryData = await this.prisma.inventoryEntryHistory.findMany({
+      skip,
+      take,
+      cursor,
+      where,
+      orderBy,
+      include: {
+        inventorySupplier: true,
+        inventoryEntryItems: { include: { inventory: true } },
+      },
+    });
+    return {
+      totalWorth: 0,
+      inventoryEntries: inventoryData,
+    };
+  }
+
+  async createEntry(data: InventoryEntry): Promise<InventoryEntryHistory> {
+    const createData: Prisma.InventoryEntryHistoryCreateInput = {
+      inventoryEntryItems: {
+        create: data.inventoryEntryItems.map((inventoryEntryItem) => {
+          return {
+            amount: inventoryEntryItem.amount,
+            amountUnit: inventoryEntryItem.amountUnit,
+            price: inventoryEntryItem.price,
+            inventory: {
+              connect: {
+                id: inventoryEntryItem.inventoryId,
+              },
+            },
+          };
+        }),
+      },
+    };
+    if (data.date) {
+      createData.date = data.date;
+    }
+    if (data.inventorySupplierId) {
+      createData.inventorySupplier = {
+        connect: {
+          id: data.inventorySupplierId,
+        },
+      };
+    }
+    return this.prisma.inventoryEntryHistory.create({ data: createData });
   }
 
   async update(params: {
