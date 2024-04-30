@@ -144,6 +144,7 @@ model StockProduct {
   created_at  DateTime   @default(now())
   updated_at  DateTime   @updatedAt
   SaleItem    SaleItem[]
+  costPrice   Float      @default(0)
 }
 
 model ProductCategory {

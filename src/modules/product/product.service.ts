@@ -111,6 +111,7 @@ export class ProductService {
       include: { ingredients: true },
     });
 
+    let costPrice = 0;
     if (!data.noCalculation) {
       product.ingredients.forEach((ingredient) => {
         invenoryUpdatePromises.push(async () => {
@@ -126,6 +127,7 @@ export class ProductService {
             });
           let amountLeft = ingredient.amount * data.inStock;
           for (let inventoryRecord of inventoryHistoryRecords) {
+            if (amountLeft === 0) break;
             let amountToDecrement = amountLeft || 0;
             const inventoryHistoryItem =
               inventoryRecord.inventoryEntryItems.find(
@@ -134,9 +136,11 @@ export class ProductService {
             if (inventoryHistoryItem.amount >= amountLeft) {
               amountToDecrement = amountLeft;
               amountLeft = 0;
+              costPrice = amountToDecrement * inventoryHistoryItem.price;
             } else if (inventoryHistoryItem.amount < amountLeft) {
               amountToDecrement = inventoryHistoryItem.amount;
               amountLeft = amountLeft - inventoryHistoryItem.amount;
+              costPrice += amountToDecrement * inventoryHistoryItem.price;
             }
             const dataToUpdate = {
               inventoryEntryItems: {
@@ -179,6 +183,7 @@ export class ProductService {
         productId: data.productId,
         inStock: data.inStock,
         inStockUnit: data.inStockUnit,
+        costPrice,
       },
     });
   }
