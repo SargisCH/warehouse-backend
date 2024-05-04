@@ -15,7 +15,7 @@ import {
   productCreateType,
   ProductService,
 } from './product.service';
-import { StockProductDTO } from './product.dto';
+import { CreateProductDto, StockProductDTO } from './product.dto';
 
 @ApiTags('product')
 @Controller('/product')
@@ -94,33 +94,27 @@ export class ProductController {
   }
 
   @Put('/:id')
-  async editPost(
+  async editProduct(
     @Param('id') id: string,
     @Body()
     productData: {
       name: string;
       inStock?: number;
       inStockUnit: string;
+      noCalculation?: boolean;
       price: number;
       priceUnit: string;
       inventoryId: string;
-      ingredients: Array<{ inventoryId: number; amount: number; unit: string }>;
+      ingredients: Array<{
+        inventoryId: number;
+        amount: number;
+        amountUnit: string;
+      }>;
     },
-  ): Promise<ProductModel> {
-    const ingrediensUpdate = productData.ingredients.map((ing) => {
-      return {
-        where: {
-          productId_inventoryId: {
-            productId: Number(id),
-            inventoryId: ing.inventoryId,
-          },
-        },
-        data: { amount: ing.amount, amountUnit: ing.unit },
-      };
-    });
+  ): Promise<CreateProductDto> {
     return this.productService.update({
       where: { id: Number(id) },
-      data: { ...productData, ingredients: { update: ingrediensUpdate } },
+      data: productData,
     });
   }
 

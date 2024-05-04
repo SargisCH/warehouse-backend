@@ -2,12 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { Product, Prisma, StockProduct } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
-import { StockProductDTO } from './product.dto';
+import { CreateProductDto, StockProductDTO } from './product.dto';
 
 export type productCreateType = {
   name: string;
   price: number;
   priceUnit: string;
+  noCalculation?: boolean;
+  inStock?: number;
+  inStockUnit?: string;
   ingredients: Array<{
     id?: string;
     amount: number;
@@ -29,11 +32,17 @@ export class ProductService {
 
   async findOne(
     productWhereUniqueInput: Prisma.ProductWhereUniqueInput,
-  ): Promise<Product | null> {
-    return this.prisma.product.findUnique({
+  ): Promise<CreateProductDto | null> {
+    const product = await this.prisma.product.findUnique({
       where: productWhereUniqueInput,
-      include: { ingredients: true },
+      include: { ingredients: true, StockProduct: true },
     });
+    if (!product.StockProduct)
+      return { ...product, inStockUnit: 'kg', inStock: 0 };
+    const inStock = product.StockProduct.inStock || 0;
+    const inStockUnit = product.StockProduct.inStockUnit || 'kg';
+    delete product.StockProduct;
+    return { ...product, inStockUnit, inStock };
   }
 
   async findAll(params: {
@@ -42,7 +51,7 @@ export class ProductService {
     cursor?: Prisma.ProductWhereUniqueInput;
     where?: Prisma.ProductWhereInput;
     orderBy?: Prisma.ProductOrderByWithRelationInput;
-  }): Promise<Product[]> {
+  }): Promise<CreateProductDto[]> {
     const { skip, take, cursor, where, orderBy } = params;
 
     const products = await this.prisma.product.findMany({
@@ -51,9 +60,16 @@ export class ProductService {
       cursor,
       where,
       orderBy,
-      include: { ingredients: true },
+      include: { ingredients: true, StockProduct: true },
     });
-    return products;
+    return products.map((p) => {
+      return {
+        ...p,
+        StockProduct: undefined,
+        inStock: p.StockProduct.inStock,
+        inStockUnit: p.StockProduct.inStockUnit,
+      };
+    });
   }
   async findAllStockProducts(params: {
     skip?: number;
@@ -81,7 +97,7 @@ export class ProductService {
     return { stockProducts, totalWorth };
   }
 
-  async create(data: productCreateType): Promise<Product> {
+  async create(data: productCreateType): Promise<CreateProductDto> {
     const productCreateInput = {
       name: data.name,
       price: data.price,
@@ -100,9 +116,24 @@ export class ProductService {
         }),
       },
     };
-    return this.prisma.product.create({
+
+    const product = await this.prisma.product.create({
       data: productCreateInput,
     });
+    let stockProduct: StockProduct;
+    if (data.inStock) {
+      stockProduct = await this.addInStock({
+        productId: product.id,
+        inStockUnit: data.inStockUnit || 'kg',
+        inStock: data.inStock,
+        noCalculation: data.noCalculation,
+      });
+    }
+    return {
+      ...product,
+      inStock: stockProduct.inStock,
+      inStockUnit: stockProduct.inStockUnit,
+    };
   }
   async addInStock(data: StockProductDTO) {
     const invenoryUpdatePromises = [];
@@ -204,7 +235,6 @@ export class ProductService {
       };
       delete data.noCalculation;
       delete data.productId;
-      console.log('data', data);
       return this.prisma.stockProduct.update({
         where: {
           id: stockProductDto.id,
@@ -222,13 +252,56 @@ export class ProductService {
 
   async update(params: {
     where: Prisma.ProductWhereUniqueInput;
-    data: Prisma.ProductUpdateInput;
-  }): Promise<Product> {
+    data: productCreateType;
+  }): Promise<CreateProductDto | null> {
     const { data, where } = params;
-    return this.prisma.product.update({
-      data,
+    console.log('data', data, where);
+    const productUpdateInput = {
+      name: data.name,
+      price: data.price,
+      priceUnit: data.priceUnit,
+      ingredients: {
+        update: data.ingredients.map((ing) => {
+          return {
+            where: {
+              productId_inventoryId: {
+                productId: Number(where.id),
+                inventoryId: ing.inventoryId,
+              },
+            },
+            data: { amount: ing.amount, amountUnit: ing.amountUnit },
+          };
+        }),
+      },
+    };
+    const productUpdated = await this.prisma.product.update({
+      data: productUpdateInput,
       where,
     });
+    const stockProduct = await this.prisma.stockProduct.findFirst({
+      where: { productId: where.id },
+    });
+    let stockProductUpdated: StockProduct;
+    if (typeof data.inStock === 'number') {
+      let amountToAdd = 0;
+      if (stockProduct?.id && data.inStock > stockProduct.inStock) {
+        amountToAdd = data.inStock - stockProduct.inStock;
+      } else if (!stockProduct?.id) {
+        amountToAdd = data.inStock;
+      }
+      stockProductUpdated = await this.addInStock({
+        inStock: amountToAdd,
+        inStockUnit: data.inStockUnit,
+        productId: productUpdated.id,
+        noCalculation: data.noCalculation,
+      });
+    }
+    return {
+      ...productUpdated,
+      inStock: stockProductUpdated.inStock || stockProduct?.inStock || 0,
+      inStockUnit:
+        stockProductUpdated.inStockUnit || stockProduct?.inStockUnit || 'kg',
+    };
   }
 
   async delete(where: Prisma.ProductWhereUniqueInput): Promise<number> {
