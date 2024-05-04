@@ -34,13 +34,16 @@ export class InventoryController {
     inventoryData.forEach((inv) => {
       let sumPrice = 0;
       let sumAmount = 0;
+      let amountUnit = '';
 
       inv.InventoryEntryHistoryItem.forEach((invEn: InventoryEntryItem) => {
         sumPrice += invEn.amount * invEn.price;
         sumAmount += invEn.amount;
+        amountUnit = invEn.amountUnit;
       });
       inv.avg = sumPrice / sumAmount;
       inv.amount = sumAmount;
+      inv.amountUnit = amountUnit;
 
       totalWorth += sumPrice;
     });

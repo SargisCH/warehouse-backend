@@ -21,4 +21,5 @@ export interface InventoryModelResponse extends Inventory {
   avg?: number;
   InventoryEntryHistoryItem?: InventoryEntryItemModel[];
   amount?: number;
+  amountUnit?: string;
 }
