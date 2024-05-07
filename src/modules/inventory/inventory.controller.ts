@@ -33,17 +33,17 @@ export class InventoryController {
     let totalWorth = 0;
     inventoryData.forEach((inv) => {
       let sumPrice = 0;
-      let sumAmount = 0;
-      let amountUnit = '';
+      // let sumAmount = 0;
+      // let amountUnit = '';
 
-      inv.InventoryEntryHistoryItem.forEach((invEn: InventoryEntryItem) => {
-        sumPrice += invEn.amount * invEn.price;
-        sumAmount += invEn.amount;
-        amountUnit = invEn.amountUnit;
-      });
-      inv.avg = sumPrice / sumAmount;
-      inv.amount = sumAmount;
-      inv.amountUnit = amountUnit;
+      sumPrice += inv.amount * inv.price;
+      // inv.InventoryEntryHistoryItem.forEach((invEn: InventoryEntryItem) => {
+      // sumAmount += invEn.amount;
+      // amountUnit = invEn.amountUnit;
+      // });
+      // inv.avg = sumPrice / sumAmount;
+      // inv.amount = sumAmount;
+      // inv.amountUnit = amountUnit;
 
       totalWorth += sumPrice;
     });
@@ -96,12 +96,18 @@ export class InventoryController {
     postData: {
       name: string;
       price: number;
+      amountUnit?: string;
+      amount?: number;
+      avg?: number;
     },
   ): Promise<InventoryModel> {
-    const { name, price } = postData;
+    const { name, price, amount = 0, amountUnit = 'kg', avg = 0 } = postData;
     return this.inventoryService.create({
       name,
       price,
+      amount,
+      avg,
+      amountUnit,
     });
   }
 
@@ -111,6 +117,21 @@ export class InventoryController {
     inventoryEntry: InventoryEntry,
   ): Promise<InventoryEntryHistoryModel> {
     return this.inventoryService.createEntry(inventoryEntry);
+  }
+
+  @Post('/updateAmount/:id')
+  async updateAmount(
+    @Param('id') id: string,
+    @Body()
+    updateAmountPayload: {
+      amount: number;
+      avg: number;
+    },
+  ): Promise<InventoryModel> {
+    return this.inventoryService.updateAmount(Number(id), {
+      where: { id: Number(id) },
+      data: updateAmountPayload,
+    });
   }
 
   @Put('/:id')

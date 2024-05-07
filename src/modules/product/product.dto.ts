@@ -11,3 +11,9 @@ export interface CreateProductDto extends Product {
   inStock: number;
   inStockUnit: string;
 }
+
+export interface ProductResponseItem extends Product {
+  inStock: number;
+  inStockUnit: string;
+  costPrice?: number;
+}

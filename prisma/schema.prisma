@@ -96,6 +96,9 @@ model Inventory {
   id                         Int                          @id @default(autoincrement())
   name                       String                       @unique
   price                      Float                        @default(0)
+  amount                     Float
+  amountUnit                 String                       @default("")
+  avg                        Float
   created_at                 DateTime                     @default(now())
   updated_at                 DateTime                     @updatedAt
   //Ingredient Ingredient?
@@ -330,4 +333,5 @@ model InventoryEntryItem {
   price               Float
   InventorySupplier   InventorySupplier?    @relation(fields: [inventorySupplierId], references: [id])
   inventorySupplierId Int?
+  deleted             Boolean               @default(false)
 }

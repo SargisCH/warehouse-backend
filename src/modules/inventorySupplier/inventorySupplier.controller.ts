@@ -34,7 +34,6 @@ export class InventorySupplierController {
   async getAllInventorySupplierOrders(
     @Query() query: { inventory: string[] },
   ): Promise<InventorySupplierOrderModel[]> {
-    console.log('-------------------------', query);
     const where: Prisma.InventorySupplierOrderWhereInput = {};
 
     if (query?.inventory) {

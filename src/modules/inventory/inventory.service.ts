@@ -108,6 +108,36 @@ export class InventoryService {
       where,
     });
   }
+  async updateAmount(
+    id: number,
+    params: {
+      where: Prisma.InventoryWhereUniqueInput;
+      data: { amount: number; avg: number };
+    },
+  ): Promise<Inventory> {
+    const { data, where } = params;
+    await this.prisma.inventoryEntryItem.updateMany({
+      where: { inventoryId: id },
+      data: { deleted: true },
+    });
+    const inventory = await this.prisma.inventory.findUnique({ where: { id } });
+    await this.prisma.inventoryEntryHistory.create({
+      data: {
+        inventoryEntryItems: {
+          create: {
+            inventoryId: id,
+            amount: data.amount,
+            amountUnit: inventory.amountUnit,
+            price: inventory.price,
+          },
+        },
+      },
+    });
+    return this.prisma.inventory.update({
+      data: { amount: data.amount, avg: data.avg },
+      where,
+    });
+  }
 
   async delete(where: Prisma.InventoryWhereUniqueInput): Promise<Inventory> {
     return this.prisma.inventory.delete({

@@ -219,14 +219,34 @@ export class InventorySupplierService {
       priceUnit: string;
     }>,
   ): Promise<void> {
-    await this.inventoryService.createEntry({
-      inventorySupplierId,
-      inventoryEntryItems: orderItems.map((oi) => ({
+    const orderItemsData = [];
+    const inventoryUpdatePromises = [];
+    orderItems.forEach(async (oi) => {
+      const inventory = await this.prisma.inventory.findUnique({
+        where: { id: oi.inventoryId },
+      });
+      inventoryUpdatePromises.push(() => {
+        const orderTotalPrice = oi.amount + oi.price;
+        const updatedAmount = inventory.amount + oi.amount;
+        const avg =
+          orderTotalPrice +
+          (inventory.amount * inventory.price) / updatedAmount;
+        return this.prisma.inventory.update({
+          where: { id: oi.inventoryId },
+          data: { avg, amount: updatedAmount },
+        });
+      });
+      await Promise.all(inventoryUpdatePromises.map((f) => f()));
+      orderItemsData.push({
         amount: oi.amount,
         amountUnit: oi.amountUnit,
         price: oi.price,
         inventoryId: oi.inventoryId,
-      })),
+      });
+    });
+    await this.inventoryService.createEntry({
+      inventorySupplierId,
+      inventoryEntryItems: orderItemsData,
     });
   }
 

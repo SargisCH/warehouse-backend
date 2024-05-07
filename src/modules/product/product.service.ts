@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { Product, Prisma, StockProduct } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateProductDto, StockProductDTO } from './product.dto';
+import {
+  CreateProductDto,
+  ProductResponseItem,
+  StockProductDTO,
+} from './product.dto';
 
 export type productCreateType = {
   name: string;
@@ -32,17 +36,18 @@ export class ProductService {
 
   async findOne(
     productWhereUniqueInput: Prisma.ProductWhereUniqueInput,
-  ): Promise<CreateProductDto | null> {
+  ): Promise<ProductResponseItem | null> {
     const product = await this.prisma.product.findUnique({
       where: productWhereUniqueInput,
       include: { ingredients: true, StockProduct: true },
     });
     if (!product.StockProduct)
-      return { ...product, inStockUnit: 'kg', inStock: 0 };
+      return { ...product, inStockUnit: 'kg', inStock: 0, costPrice: 0 };
     const inStock = product.StockProduct.inStock || 0;
     const inStockUnit = product.StockProduct.inStockUnit || 'kg';
+    const costPrice = product.StockProduct.costPrice || 0;
     delete product.StockProduct;
-    return { ...product, inStockUnit, inStock };
+    return { ...product, inStockUnit, inStock, costPrice };
   }
 
   async findAll(params: {
@@ -51,7 +56,7 @@ export class ProductService {
     cursor?: Prisma.ProductWhereUniqueInput;
     where?: Prisma.ProductWhereInput;
     orderBy?: Prisma.ProductOrderByWithRelationInput;
-  }): Promise<CreateProductDto[]> {
+  }): Promise<ProductResponseItem[]> {
     const { skip, take, cursor, where, orderBy } = params;
 
     const products = await this.prisma.product.findMany({
@@ -68,6 +73,7 @@ export class ProductService {
         StockProduct: undefined,
         inStock: p.StockProduct.inStock,
         inStockUnit: p.StockProduct.inStockUnit,
+        costPrice: p.StockProduct.costPrice,
       };
     });
   }

@@ -18,8 +18,5 @@ export type InventoryEntryItem = {
 };
 
 export interface InventoryModelResponse extends Inventory {
-  avg?: number;
   InventoryEntryHistoryItem?: InventoryEntryItemModel[];
-  amount?: number;
-  amountUnit?: string;
 }
