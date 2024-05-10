@@ -7,10 +7,6 @@ export interface StockProductDTO {
   inStockUnit: string;
   noCalculation?: boolean;
 }
-export interface CreateProductDto extends Product {
-  inStock: number;
-  inStockUnit: string;
-}
 
 export interface ProductResponseItem extends Product {
   inStock: number;

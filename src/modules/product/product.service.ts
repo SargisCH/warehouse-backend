@@ -2,19 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { Product, Prisma, StockProduct } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  CreateProductDto,
-  ProductResponseItem,
-  StockProductDTO,
-} from './product.dto';
+import { ProductResponseItem, StockProductDTO } from './product.dto';
 
 export type productCreateType = {
   name: string;
   price: number;
   priceUnit: string;
-  noCalculation?: boolean;
-  inStock?: number;
-  inStockUnit?: string;
   ingredients: Array<{
     id?: string;
     amount: number;
@@ -68,12 +61,15 @@ export class ProductService {
       include: { ingredients: true, StockProduct: true },
     });
     return products.map((p) => {
+      const inStock = p.StockProduct?.inStock || 0;
+      const inStockUnit = p.StockProduct?.inStockUnit || 'kg';
+      const costPrice = p.StockProduct?.costPrice || 0;
       return {
         ...p,
         StockProduct: undefined,
-        inStock: p.StockProduct.inStock,
-        inStockUnit: p.StockProduct.inStockUnit,
-        costPrice: p.StockProduct.costPrice,
+        inStock,
+        inStockUnit,
+        costPrice,
       };
     });
   }
@@ -103,7 +99,7 @@ export class ProductService {
     return { stockProducts, totalWorth };
   }
 
-  async create(data: productCreateType): Promise<CreateProductDto> {
+  async create(data: productCreateType): Promise<Product> {
     const productCreateInput = {
       name: data.name,
       price: data.price,
@@ -126,19 +122,8 @@ export class ProductService {
     const product = await this.prisma.product.create({
       data: productCreateInput,
     });
-    let stockProduct: StockProduct;
-    if (data.inStock) {
-      stockProduct = await this.addInStock({
-        productId: product.id,
-        inStockUnit: data.inStockUnit || 'kg',
-        inStock: data.inStock,
-        noCalculation: data.noCalculation,
-      });
-    }
     return {
       ...product,
-      inStock: stockProduct.inStock,
-      inStockUnit: stockProduct.inStockUnit,
     };
   }
   async addInStock(data: StockProductDTO) {
@@ -255,13 +240,80 @@ export class ProductService {
       });
     }
   }
+  async makeProduct(productPayload: {
+    amount: number;
+    id: number;
+  }): Promise<ProductResponseItem | null> {
+    const stockProduct = await this.prisma.stockProduct.findUnique({
+      where: { productId: productPayload.id },
+    });
+    const stockProductUpdated = await this.addInStock({
+      ...stockProduct,
+      productId: productPayload.id,
+      inStock: productPayload.amount,
+      inStockUnit: stockProduct?.inStockUnit || 'kg',
+    });
+    const product = await this.prisma.product.findUnique({
+      where: { id: productPayload.id },
+    });
+    return {
+      ...product,
+      inStock: stockProductUpdated.inStock,
+      inStockUnit: stockProductUpdated.inStockUnit,
+      costPrice: stockProductUpdated.costPrice,
+    };
+  }
+  async updateAmount(
+    id: number,
+    params: {
+      where: Prisma.StockProductWhereInput;
+      data: { amount: number; costPrice: number; amountUnit?: string };
+    },
+  ): Promise<ProductResponseItem> {
+    const { data, where } = params;
+    const stockProduct = await this.prisma.stockProduct.findFirst({
+      where: { productId: where.id },
+    });
+    let stockProductUpdated: StockProduct;
+    if (stockProduct?.id) {
+      stockProductUpdated = await this.prisma.stockProduct.update({
+        where: { productId: id },
+        data: {
+          inStock: data.amount,
+          costPrice: data.costPrice,
+          inStockUnit: data.amountUnit || 'kg',
+        },
+      });
+    } else {
+      stockProductUpdated = await this.prisma.stockProduct.create({
+        data: {
+          product: {
+            connect: {
+              id: Number(where.id),
+            },
+          },
+          inStock: data.amount,
+          costPrice: data.costPrice,
+          inStockUnit: data.amountUnit || 'kg',
+        },
+      });
+    }
+    const product = await this.prisma.product.findUnique({
+      where: { id: Number(where.id) },
+    });
+    return {
+      ...product,
+      inStock: stockProductUpdated.inStock,
+      inStockUnit: stockProductUpdated.inStockUnit,
+      costPrice: stockProductUpdated.costPrice,
+    };
+  }
 
   async update(params: {
     where: Prisma.ProductWhereUniqueInput;
     data: productCreateType;
-  }): Promise<CreateProductDto | null> {
+  }): Promise<Product | null> {
     const { data, where } = params;
-    console.log('data', data, where);
     const productUpdateInput = {
       name: data.name,
       price: data.price,
@@ -284,29 +336,8 @@ export class ProductService {
       data: productUpdateInput,
       where,
     });
-    const stockProduct = await this.prisma.stockProduct.findFirst({
-      where: { productId: where.id },
-    });
-    let stockProductUpdated: StockProduct;
-    if (typeof data.inStock === 'number') {
-      let amountToAdd = 0;
-      if (stockProduct?.id && data.inStock > stockProduct.inStock) {
-        amountToAdd = data.inStock - stockProduct.inStock;
-      } else if (!stockProduct?.id) {
-        amountToAdd = data.inStock;
-      }
-      stockProductUpdated = await this.addInStock({
-        inStock: amountToAdd,
-        inStockUnit: data.inStockUnit,
-        productId: productUpdated.id,
-        noCalculation: data.noCalculation,
-      });
-    }
     return {
       ...productUpdated,
-      inStock: stockProductUpdated.inStock || stockProduct?.inStock || 0,
-      inStockUnit:
-        stockProductUpdated.inStockUnit || stockProduct?.inStockUnit || 'kg',
     };
   }
 

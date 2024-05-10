@@ -15,7 +15,7 @@ import {
   productCreateType,
   ProductService,
 } from './product.service';
-import { CreateProductDto, StockProductDTO } from './product.dto';
+import { ProductResponseItem, StockProductDTO } from './product.dto';
 
 @ApiTags('product')
 @Controller('/product')
@@ -92,7 +92,31 @@ export class ProductController {
   ): Promise<StockProduct> {
     return this.productService.updateStockProduct(stockProductDto);
   }
-
+  @Put('/makeProduct/:id')
+  async make(
+    @Param('id') id: string,
+    @Body()
+    productPayload: { amount: number },
+  ): Promise<ProductResponseItem> {
+    return this.productService.makeProduct({
+      ...productPayload,
+      id: Number(id),
+    });
+  }
+  @Put('/updateAmount/:id')
+  async updateAmount(
+    @Param('id') id: string,
+    @Body()
+    updateAmountPayload: {
+      amount: number;
+      costPrice: number;
+    },
+  ): Promise<ProductResponseItem> {
+    return this.productService.updateAmount(Number(id), {
+      where: { id: Number(id) },
+      data: updateAmountPayload,
+    });
+  }
   @Put('/:id')
   async editProduct(
     @Param('id') id: string,
@@ -111,7 +135,7 @@ export class ProductController {
         amountUnit: string;
       }>;
     },
-  ): Promise<CreateProductDto> {
+  ): Promise<ProductModel> {
     return this.productService.update({
       where: { id: Number(id) },
       data: productData,
