@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
 import { User as UserModel } from '@prisma/client';
 import AWS_SDK from 'aws-sdk';
+import fs from 'fs';
 
 import { GLOBAL_CONFIG } from '../../configs/global.config';
 import { UserService } from '../user/user.service';
@@ -10,7 +11,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthHelpers } from '../../shared/helpers/auth.helpers';
 
 import { AuthResponseDTO, LoginUserDTO, RegisterUserDTO } from './auth.dto';
-
+AWS_SDK.config.update({
+  region: 'us-west-2', // Replace with your desired region
+  accessKeyId: process.env.AWS_ACCESS_KEY, // Ensure these are set in your environment
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+});
 @Injectable()
 export class AuthService {
   constructor(
@@ -86,5 +91,44 @@ export class AuthService {
     delete user.password;
     console.log('user', user);
     return user;
+  }
+  public async updateSettings(
+    body: {
+      logo?: string;
+      name?: string;
+      fileType?: string;
+    },
+    user: User,
+  ): Promise<Omit<UserModel, 'password'>> {
+    const s3 = new AWS_SDK.S3();
+    const buffer = Buffer.from(body.logo.split(',')[1], 'base64');
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: user.tenantId },
+    });
+    // Set up the S3 upload parameters
+    const [, type] = body.fileType.split('/');
+    const params = {
+      Bucket: 'warehouse-logos',
+      Key: `${tenant.id}/${new Date().valueOf()}logo.${type || 'jpg'}`,
+      Body: buffer,
+      ContentEncoding: 'base64', // Required for base64 data
+      ContentType: body.fileType || 'image/jpeg', // Change based on your content type
+      ACL: 'public-read',
+    };
+    try {
+      // Upload the image to S3
+      const data = await s3.upload(params).promise();
+      await this.prisma.tenant.update({
+        where: { id: user.id },
+        data: { logo: data.Location },
+      });
+      return this.prisma.user.findUnique({
+        where: { id: user.id },
+        include: { tenant: true },
+      });
+    } catch (err) {
+      console.error('Error uploading file:', err);
+      throw err;
+    }
   }
 }

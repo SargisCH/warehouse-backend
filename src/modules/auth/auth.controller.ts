@@ -1,4 +1,12 @@
-import { Body, Controller, Post, Response } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Put,
+  Req,
+  Response,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { User } from '@prisma/client';
 import { User as UserModel } from '@prisma/client';
@@ -7,6 +15,7 @@ import { JWT_EXPIRY_SECONDS } from '../../shared/constants/global.constants';
 
 import { AuthService } from './auth.service';
 import { AuthResponseDTO, LoginUserDTO, RegisterUserDTO } from './auth.dto';
+import { AuthGuard } from './auth.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -51,6 +60,16 @@ export class AuthController {
   ): Promise<Omit<UserModel, 'password'>> {
     console.log('body email', body.email);
     return this.authService.getUser(body.email);
+  }
+
+  @UseGuards(AuthGuard)
+  @Put('settings')
+  async updateSettings(
+    @Req() request: Request,
+    @Body() body: { logo?: string; name?: string; fileType?: string },
+  ): Promise<Omit<UserModel, 'password'>> {
+    const user = (request as any).user as User;
+    return this.authService.updateSettings(body, user);
   }
 
   // @Post('logout')
