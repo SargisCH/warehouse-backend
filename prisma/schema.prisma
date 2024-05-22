@@ -99,6 +99,7 @@ model Inventory {
   amount                     Float
   amountUnit                 String                       @default("")
   avg                        Float
+  deleted                    Boolean?                     @default(false)
   created_at                 DateTime                     @default(now())
   updated_at                 DateTime                     @updatedAt
   //Ingredient Ingredient?
@@ -135,6 +136,7 @@ model Product {
   priceUnit    String
   created_at   DateTime      @default(now())
   updated_at   DateTime      @updatedAt
+  deleted      Boolean?      @default(false)
   StockProduct StockProduct?
 }
 

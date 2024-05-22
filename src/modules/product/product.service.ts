@@ -56,7 +56,7 @@ export class ProductService {
       skip,
       take,
       cursor,
-      where,
+      where: { ...where, AND: { deleted: false } },
       orderBy,
       include: { ingredients: true, StockProduct: true },
     });
@@ -130,12 +130,13 @@ export class ProductService {
     const invenoryUpdatePromises = [];
     const product = await this.prisma.product.findUnique({
       where: { id: data.productId },
-      include: { ingredients: true },
+      include: { ingredients: { include: { inventory: true } } },
     });
 
     let costPrice = 0;
     if (!data.noCalculation) {
       product.ingredients.forEach((ingredient) => {
+        let ingredientTotalAmountDecrement = 0;
         invenoryUpdatePromises.push(async () => {
           const inventoryHistoryRecords =
             await this.prisma.inventoryEntryHistory.findMany({
@@ -158,7 +159,7 @@ export class ProductService {
             if (inventoryHistoryItem.amount >= amountLeft) {
               amountToDecrement = amountLeft;
               amountLeft = 0;
-              costPrice = amountToDecrement * inventoryHistoryItem.price;
+              costPrice += amountToDecrement * inventoryHistoryItem.price;
             } else if (inventoryHistoryItem.amount < amountLeft) {
               amountToDecrement = inventoryHistoryItem.amount;
               amountLeft = amountLeft - inventoryHistoryItem.amount;
@@ -174,12 +175,24 @@ export class ProductService {
                 },
               },
             };
+            ingredientTotalAmountDecrement += amountToDecrement;
 
             await this.prisma.inventoryEntryHistory.update({
               where: { id: inventoryRecord.id },
               data: dataToUpdate,
             });
           }
+          const newAvg =
+            (ingredient.inventory.amount * ingredient.inventory.avg -
+              ingredientTotalAmountDecrement * ingredient.inventory.avg) /
+            (ingredient.inventory.amount - ingredientTotalAmountDecrement);
+          await this.prisma.inventory.update({
+            where: { id: ingredient.inventoryId },
+            data: {
+              amount: { decrement: ingredientTotalAmountDecrement },
+              avg: newAvg,
+            },
+          });
         });
       });
     }
@@ -205,7 +218,7 @@ export class ProductService {
         productId: data.productId,
         inStock: data.inStock,
         inStockUnit: data.inStockUnit,
-        costPrice,
+        costPrice: costPrice / data.inStock,
       },
     });
   }
@@ -246,7 +259,9 @@ export class ProductService {
   }): Promise<ProductResponseItem | null> {
     const stockProduct = await this.prisma.stockProduct.findUnique({
       where: { productId: productPayload.id },
+      include: { product: true },
     });
+
     const stockProductUpdated = await this.addInStock({
       ...stockProduct,
       productId: productPayload.id,
@@ -341,11 +356,12 @@ export class ProductService {
     };
   }
 
-  async delete(where: Prisma.ProductWhereUniqueInput): Promise<number> {
-    const res = await this.prisma.product.deleteMany({
+  async delete(where: Prisma.ProductWhereUniqueInput): Promise<Product> {
+    const prod = await this.prisma.product.update({
       where,
+      data: { deleted: true },
     });
-    return res.count;
+    return prod;
   }
   async deleteIngredients(where: Prisma.IngredientWhereInput): Promise<number> {
     return (await this.prisma.ingredient.deleteMany({ where })).count;

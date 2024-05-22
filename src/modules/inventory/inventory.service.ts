@@ -29,7 +29,7 @@ export class InventoryService {
       skip,
       take,
       cursor,
-      where,
+      where: { ...where, AND: { deleted: false } },
       orderBy,
       include: { InventoryEntryHistoryItem: true },
     });
@@ -95,6 +95,28 @@ export class InventoryService {
         },
       };
     }
+    const inventoryIds = data.inventoryEntryItems.map(
+      (invEn) => invEn.inventoryId,
+    );
+    const inventories = await this.prisma.inventory.findMany({
+      where: { id: { in: inventoryIds } },
+    });
+    inventories.forEach(async (inv) => {
+      const orderInv = data.inventoryEntryItems.find(
+        (invEn) => invEn.inventoryId === inv.id,
+      );
+      const avgDB = inv.avg * inv.amount;
+      const orderTotalPrice = orderInv.price * orderInv.amount;
+      const totalCost = avgDB + orderTotalPrice;
+      const avg =
+        inv.avg > 0
+          ? totalCost / (inv.amount + orderInv.amount)
+          : orderInv.price;
+      await this.prisma.inventory.update({
+        where: { id: inv.id },
+        data: { avg, amount: inv.amount + orderInv.amount },
+      });
+    });
     return this.prisma.inventoryEntryHistory.create({ data: createData });
   }
 
@@ -140,8 +162,9 @@ export class InventoryService {
   }
 
   async delete(where: Prisma.InventoryWhereUniqueInput): Promise<Inventory> {
-    return this.prisma.inventory.delete({
+    return this.prisma.inventory.update({
       where,
+      data: { deleted: true },
     });
   }
 }
