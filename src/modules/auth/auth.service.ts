@@ -13,8 +13,8 @@ import { AuthHelpers } from '../../shared/helpers/auth.helpers';
 import { AuthResponseDTO, LoginUserDTO, RegisterUserDTO } from './auth.dto';
 AWS_SDK.config.update({
   region: 'us-west-2', // Replace with your desired region
-  accessKeyId: process.env.AWS_ACCESS_KEY, // Ensure these are set in your environment
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID, // Ensure these are set in your environment
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY_ID,
 });
 @Injectable()
 export class AuthService {
