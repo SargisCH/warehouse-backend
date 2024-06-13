@@ -6,6 +6,8 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { Product as ProductModel, StockProduct } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
@@ -16,23 +18,34 @@ import {
   ProductService,
 } from './product.service';
 import { ProductResponseItem, StockProductDTO } from './product.dto';
+import { AuthGuard } from '../auth/auth.guard';
+import { RequestExtended } from 'src/configs/types';
 
 @ApiTags('product')
 @Controller('/product')
 export class ProductController {
   constructor(private productService: ProductService) {}
-
+  @UseGuards(AuthGuard)
   @Get('/')
-  async getAllProduct(): Promise<ProductModel[]> {
-    return this.productService.findAll({});
+  async getAllProduct(
+    @Req() request: RequestExtended,
+  ): Promise<ProductModel[]> {
+    const {
+      user: { tenantId },
+    } = request;
+    return this.productService.findAll({ where: { tenantId } });
   }
 
+  @UseGuards(AuthGuard)
   @Get('/stockProduct')
-  async getAllStockProduct(): Promise<{
+  async getAllStockProduct(@Req() request: RequestExtended): Promise<{
     stockProducts: StockProduct[];
     totalWorth: number;
   }> {
-    return this.productService.findAllStockProducts({});
+    const {
+      user: { tenantId },
+    } = request;
+    return this.productService.findAllStockProducts({ where: { tenantId } });
   }
 
   @Get('/:id')
@@ -64,47 +77,69 @@ export class ProductController {
   //     },
   //   });
   // }
-
+  @UseGuards(AuthGuard)
   @Post('create')
   async createProduct(
+    @Req() request: RequestExtended,
     @Body()
     postData: productCreateType,
   ): Promise<ProductModel> {
-    return this.productService.create(postData);
+    const {
+      user: { tenantId },
+    } = request;
+    return this.productService.create({ ...postData, tenantId });
   }
-
+  @UseGuards(AuthGuard)
   @Post('addInStock')
   async addInStock(
+    @Req() request: RequestExtended,
     @Body()
     postData: StockProductDTO,
   ): Promise<StockProduct> {
-    return this.productService.addInStock(postData);
+    return this.productService.addInStock(postData, request.user.tenantId);
   }
+
+  @UseGuards(AuthGuard)
   @Get('/stockProduct/:id')
   async getStockProductById(@Param('id') id: string): Promise<StockProduct> {
     return this.productService.findStockProductById({ id: Number(id) });
   }
+
+  @UseGuards(AuthGuard)
   @Put('/stockProduct/:id')
   async updateStockProductById(
+    @Req() request: RequestExtended,
     @Param('id') id: string,
     @Body()
     stockProductDto: StockProductDTO,
   ): Promise<StockProduct> {
-    return this.productService.updateStockProduct(stockProductDto);
+    return this.productService.updateStockProduct(
+      stockProductDto,
+      request.user.tenantId,
+    );
   }
+
+  @UseGuards(AuthGuard)
   @Put('/makeProduct/:id')
   async make(
+    @Req() request: RequestExtended,
     @Param('id') id: string,
     @Body()
     productPayload: { amount: number },
   ): Promise<ProductResponseItem> {
-    return this.productService.makeProduct({
-      ...productPayload,
-      id: Number(id),
-    });
+    return this.productService.makeProduct(
+      {
+        ...productPayload,
+        id: Number(id),
+      },
+      request.user.tenantId,
+    );
   }
+
+  @UseGuards(AuthGuard)
   @Put('/updateAmount/:id')
   async updateAmount(
+    @Req() request: RequestExtended,
     @Param('id') id: string,
     @Body()
     updateAmountPayload: {
@@ -112,13 +147,20 @@ export class ProductController {
       costPrice: number;
     },
   ): Promise<ProductResponseItem> {
-    return this.productService.updateAmount(Number(id), {
-      where: { id: Number(id) },
-      data: updateAmountPayload,
-    });
+    return this.productService.updateAmount(
+      Number(id),
+      {
+        where: { id: Number(id) },
+        data: updateAmountPayload,
+      },
+      request.user.tenantId,
+    );
   }
+
+  @UseGuards(AuthGuard)
   @Put('/:id')
   async editProduct(
+    @Req() request: RequestExtended,
     @Param('id') id: string,
     @Body()
     productData: {
@@ -138,10 +180,11 @@ export class ProductController {
   ): Promise<ProductModel> {
     return this.productService.update({
       where: { id: Number(id) },
-      data: productData,
+      data: { ...productData, tenantId: request.user.tenantId },
     });
   }
 
+  @UseGuards(AuthGuard)
   @Delete('/:id')
   async deleteProduct(@Param('id') id: string): Promise<{ message: string }> {
     // await this.productService.deleteIngredients({ productId: Number(id) });

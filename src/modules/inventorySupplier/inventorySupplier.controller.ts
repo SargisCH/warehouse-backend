@@ -24,14 +24,17 @@ import { AuthGuard } from '../../modules/auth/auth.guard';
 
 import { InventorySupplierService } from './inventorySupplier.service';
 import { InventorySupplierOrderDTO } from './inventorySupplierOrder.dto';
+import { RequestExtended } from 'src/configs/types';
 
 @ApiTags('inventorySupplier')
 @Controller('/inventorySupplier')
 export class InventorySupplierController {
   constructor(private inventorySupplierService: InventorySupplierService) {}
 
+  @UseGuards(AuthGuard)
   @Get('/order')
   async getAllInventorySupplierOrders(
+    @Req() request: RequestExtended,
     @Query() query: { inventory: string[] },
   ): Promise<InventorySupplierOrderModel[]> {
     const where: Prisma.InventorySupplierOrderWhereInput = {};
@@ -47,17 +50,21 @@ export class InventorySupplierController {
     }
     return this.inventorySupplierService.findOrderMany({
       ...where,
+      tenantId: request.user.tenantId,
     });
   }
 
   @Get('/')
   @UseGuards(AuthGuard)
   async getAllInventorySuppliers(
-    @Req() request: Request,
+    @Req() request: RequestExtended,
   ): Promise<InventorySupplierModel[]> {
-    return this.inventorySupplierService.findAll({ where: { deleted: false } });
+    return this.inventorySupplierService.findAll({
+      where: { deleted: false, tenantId: request.user.tenantId },
+    });
   }
 
+  @UseGuards(AuthGuard)
   @Get('/:id')
   async getInventorySupplierById(
     @Param('id') id: string,
@@ -90,8 +97,10 @@ export class InventorySupplierController {
   //   });
   // }
 
+  @UseGuards(AuthGuard)
   @Post('create')
   async createDraft(
+    @Req() request: RequestExtended,
     @Body()
     postData: {
       name: string;
@@ -101,9 +110,11 @@ export class InventorySupplierController {
 
     return this.inventorySupplierService.create({
       name,
+      tenant: { connect: { id: request.user.tenantId } },
     });
   }
 
+  @UseGuards(AuthGuard)
   @Put('/:id')
   async editInventorySupplier(
     @Param('id') id: string,
@@ -118,6 +129,7 @@ export class InventorySupplierController {
     });
   }
 
+  @UseGuards(AuthGuard)
   @Delete('/:id')
   async deleteInventorySupplier(
     @Param('id') id: string,
@@ -156,6 +168,9 @@ export class InventorySupplierController {
 
     return inventorySupplier;
   }
+
+  @UseGuards(AuthGuard)
+  @Post('/:id/order/create')
   @Put('/:id/order/:orderId')
   async updateOrder(
     @Param('id') id: string,
@@ -192,6 +207,8 @@ export class InventorySupplierController {
 
     return inventorySupplier;
   }
+
+  @UseGuards(AuthGuard)
   @Get('/:id/order')
   async getInventorySupplierOrder(
     @Param('id') id: string,
@@ -201,6 +218,7 @@ export class InventorySupplierController {
     });
   }
 
+  @UseGuards(AuthGuard)
   @Get('/:id/order/:orderId')
   async getOrderbyId(
     @Param('id') id: string,
@@ -211,6 +229,7 @@ export class InventorySupplierController {
     });
   }
 
+  @UseGuards(AuthGuard)
   @Delete('/:id/order/:orderId')
   async deleteInventorySupplierOrder(
     @Param('id') id: string,
@@ -232,6 +251,7 @@ export class InventorySupplierController {
     }
   }
 
+  @UseGuards(AuthGuard)
   @Get('/:id/inventory/:inventoryId/latest')
   async getLatestOrderDetails(
     @Param('id') id: string,

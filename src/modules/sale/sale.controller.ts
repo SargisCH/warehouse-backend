@@ -18,6 +18,7 @@ import { AuthGuard } from '../auth/auth.guard';
 import { ManagerService } from '../manager/manager.service';
 
 import { SaleAPIType, SaleService } from './sale.service';
+import { RequestExtended } from 'src/configs/types';
 
 @ApiTags('sale')
 @Controller('/sale')
@@ -39,8 +40,8 @@ export class SaleController {
       created_at: string | Date;
     },
   ): Promise<{ saleList: SaleModel[]; totalPages: number }> {
-    const where: Prisma.SaleWhereInput = {};
     const user = (request as any).user as User;
+    const where: Prisma.SaleWhereInput = { tenantId: user.tenantId };
     let manager: Manager;
     if (user.role === Role.MANAGER) {
       manager = await this.managerService.findFirst({
@@ -80,6 +81,7 @@ export class SaleController {
     };
   }
 
+  @UseGuards(AuthGuard)
   @Get('/:id')
   async getSaleById(@Param('id') id: string): Promise<SaleModel> {
     return this.saleService.findOne({ id: Number(id) });
@@ -92,7 +94,6 @@ export class SaleController {
     @Body()
     saleData: SaleAPIType,
   ): Promise<SaleModel> {
-    console.log('sale data', saleData);
     return this.saleService.create(saleData, (request as any).user as User);
   }
 

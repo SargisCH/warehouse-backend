@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Inventory, InventoryEntryHistory, Prisma } from '@prisma/client';
+import { Inventory, InventoryEntryHistory, Prisma, User } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { InventoryEntry } from './inventory.DTO';
@@ -68,8 +68,12 @@ export class InventoryService {
     };
   }
 
-  async createEntry(data: InventoryEntry): Promise<InventoryEntryHistory> {
+  async createEntry(
+    data: InventoryEntry,
+    user: User,
+  ): Promise<InventoryEntryHistory> {
     const createData: Prisma.InventoryEntryHistoryCreateInput = {
+      tenant: { connect: { id: user.tenantId } },
       inventoryEntryItems: {
         create: data.inventoryEntryItems.map((inventoryEntryItem) => {
           return {
@@ -136,6 +140,7 @@ export class InventoryService {
       where: Prisma.InventoryWhereUniqueInput;
       data: { amount: number; avg: number };
     },
+    user: User,
   ): Promise<Inventory> {
     const { data, where } = params;
     await this.prisma.inventoryEntryItem.updateMany({
@@ -145,6 +150,7 @@ export class InventoryService {
     const inventory = await this.prisma.inventory.findUnique({ where: { id } });
     await this.prisma.inventoryEntryHistory.create({
       data: {
+        tenant: { connect: { id: user.tenantId } },
         inventoryEntryItems: {
           create: {
             inventoryId: id,

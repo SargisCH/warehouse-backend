@@ -116,6 +116,7 @@ export class SaleService {
     });
     const saleCreated = await this.prisma.sale.create({
       data: {
+        tenant: { connect: { id: user.tenantId } },
         paymentType: data.paymentType,
         partialCreditAmount: isPartailCredit ? data.partialCreditAmount : 0,
         client: {
@@ -227,9 +228,10 @@ export class SaleService {
       await this.prisma.transactionHistory.create({
         data: {
           amount,
-          saleId: saleCreated.id,
+          tenant: { connect: { id: user.tenantId } },
+          sale: { connect: { id: saleCreated.id } },
           transactionType: TransactionType.IN,
-          clientId: data.clientId,
+          client: { connect: { id: data.clientId } },
         },
       });
     }

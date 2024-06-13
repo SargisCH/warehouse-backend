@@ -25,6 +25,7 @@ import { ManagerService } from '../manager/manager.service';
 
 import { ClientService } from './client.service';
 import { ClientDTO } from './client.dto';
+import { RequestExtended } from 'src/configs/types';
 
 @ApiTags('client')
 @Controller('/client')
@@ -47,9 +48,9 @@ export class ClientController {
     },
     @Req() request: Request,
   ): Promise<ClientModel[]> {
-    const where: Prisma.ClientWhereInput = {};
-    const sort: Prisma.ClientOrderByWithRelationInput = {};
     const user = (request as any).user as User;
+    const where: Prisma.ClientWhereInput = { tenantId: user.tenantId };
+    const sort: Prisma.ClientOrderByWithRelationInput = {};
     let manager: Manager;
 
     if (user.role === Role.MANAGER) {
@@ -98,13 +99,14 @@ export class ClientController {
   async getClientById(@Param('id') id: string): Promise<ClientModel> {
     return this.clientService.findOne({ id: Number(id) });
   }
-
+  @UseGuards(AuthGuard)
   @Post('create')
   async createDraft(
+    @Req() request: RequestExtended,
     @Body()
     clientData: ClientDTO,
   ): Promise<ClientModel> {
-    return this.clientService.create(clientData);
+    return this.clientService.create(clientData, request.user.tenantId);
   }
 
   @Put('/:id')

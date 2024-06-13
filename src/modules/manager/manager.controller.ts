@@ -20,22 +20,30 @@ import { ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/auth.guard';
 
 import { ManagerService } from './manager.service';
+import { RequestExtended } from 'src/configs/types';
 
 @ApiTags('manager')
 @Controller('/manager')
 export class ManagerController {
   constructor(private managerService: ManagerService) {}
 
+  @UseGuards(AuthGuard)
   @Get('/')
-  async getAllManagers(): Promise<ManagerModel[]> {
-    return this.managerService.findAll({});
+  async getAllManagers(
+    @Req() request: RequestExtended,
+  ): Promise<ManagerModel[]> {
+    return this.managerService.findAll({
+      where: { tenantId: request.user.tenantId },
+    });
   }
 
+  @UseGuards(AuthGuard)
   @Get('/:id')
   async getManagerById(@Param('id') id: string): Promise<ManagerModel> {
     return this.managerService.findOne({ id: Number(id) });
   }
 
+  @UseGuards(AuthGuard)
   @Get('/:id/schedule/:clientId')
   async getSchedule(
     @Param('id') id: string,
@@ -51,13 +59,13 @@ export class ManagerController {
     @Body()
     managerData: Prisma.ManagerCreateInput,
   ): Promise<ManagerModel> {
-    console.log('manahger create');
     return this.managerService.create(
       managerData,
       (request as any).user as User,
     );
   }
 
+  @UseGuards(AuthGuard)
   @Put('/:id')
   async editManager(
     @Param('id') id: string,
@@ -70,6 +78,7 @@ export class ManagerController {
     });
   }
 
+  @UseGuards(AuthGuard)
   @Delete('/:id')
   async deleteManager(@Param('id') id: string): Promise<{ message: string }> {
     const deletedCount = await this.managerService.delete({

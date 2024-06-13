@@ -8,6 +8,7 @@ export type productCreateType = {
   name: string;
   price: number;
   priceUnit: string;
+  tenantId: number;
   ingredients: Array<{
     id?: string;
     amount: number;
@@ -104,6 +105,7 @@ export class ProductService {
       name: data.name,
       price: data.price,
       priceUnit: data.priceUnit,
+      tenant: { connect: { id: data.tenantId } },
       ingredients: {
         create: data.ingredients.map((ingredient) => {
           return {
@@ -126,7 +128,7 @@ export class ProductService {
       ...product,
     };
   }
-  async addInStock(data: StockProductDTO) {
+  async addInStock(data: StockProductDTO, tenantId: number) {
     const invenoryUpdatePromises = [];
     const product = await this.prisma.product.findUnique({
       where: { id: data.productId },
@@ -215,7 +217,8 @@ export class ProductService {
     }
     return this.prisma.stockProduct.create({
       data: {
-        productId: data.productId,
+        product: { connect: { id: data.productId } },
+        tenant: { connect: { id: tenantId } },
         inStock: data.inStock,
         inStockUnit: data.inStockUnit,
         costPrice: costPrice / data.inStock,
@@ -232,6 +235,7 @@ export class ProductService {
   }
   async updateStockProduct(
     stockProductDto: StockProductDTO,
+    tenantId: number,
   ): Promise<StockProduct | null> {
     if (stockProductDto.noCalculation) {
       const data = {
@@ -248,26 +252,35 @@ export class ProductService {
     } else {
       delete stockProductDto.noCalculation;
       delete stockProductDto.productId;
-      return this.addInStock({
-        ...stockProductDto,
-      });
+      return this.addInStock(
+        {
+          ...stockProductDto,
+        },
+        tenantId,
+      );
     }
   }
-  async makeProduct(productPayload: {
-    amount: number;
-    id: number;
-  }): Promise<ProductResponseItem | null> {
+  async makeProduct(
+    productPayload: {
+      amount: number;
+      id: number;
+    },
+    tenantId: number,
+  ): Promise<ProductResponseItem | null> {
     const stockProduct = await this.prisma.stockProduct.findUnique({
       where: { productId: productPayload.id },
       include: { product: true },
     });
 
-    const stockProductUpdated = await this.addInStock({
-      ...stockProduct,
-      productId: productPayload.id,
-      inStock: productPayload.amount,
-      inStockUnit: stockProduct?.inStockUnit || 'kg',
-    });
+    const stockProductUpdated = await this.addInStock(
+      {
+        ...stockProduct,
+        productId: productPayload.id,
+        inStock: productPayload.amount,
+        inStockUnit: stockProduct?.inStockUnit || 'kg',
+      },
+      tenantId,
+    );
     const product = await this.prisma.product.findUnique({
       where: { id: productPayload.id },
     });
@@ -284,6 +297,7 @@ export class ProductService {
       where: Prisma.StockProductWhereInput;
       data: { amount: number; costPrice: number; amountUnit?: string };
     },
+    tenantId: number,
   ): Promise<ProductResponseItem> {
     const { data, where } = params;
     const stockProduct = await this.prisma.stockProduct.findFirst({
@@ -307,6 +321,7 @@ export class ProductService {
               id: Number(where.id),
             },
           },
+          tenant: { connect: { id: tenantId } },
           inStock: data.amount,
           costPrice: data.costPrice,
           inStockUnit: data.amountUnit || 'kg',

@@ -25,6 +25,7 @@ import { UserService } from '../user/user.service';
 import { AuthGuard } from '../auth/auth.guard';
 
 import { TransactionHistoryService } from './transactionHistory.service';
+import { RequestExtended } from 'src/configs/types';
 type TransactionHistoryApiType = {
   id?: number;
   transactionType: TransactionType;
@@ -51,10 +52,11 @@ export class TransactionHistoryController {
   async getAllTransactionHistory(
     @Req() request: Request,
   ): Promise<TransactionHistoryModel[]> {
-    const where: Prisma.TransactionHistoryWhereInput = {};
     const user = (request as any).user as User;
+    const where: Prisma.TransactionHistoryWhereInput = {
+      tenantId: user.tenantId,
+    };
     let manager: Manager;
-
     if (user.role === Role.MANAGER) {
       manager = await this.managerService.findFirst({
         email: user.email,
@@ -66,6 +68,7 @@ export class TransactionHistoryController {
     return this.transactionHistoryService.findAll({ where });
   }
 
+  @UseGuards(AuthGuard)
   @Get('/:id')
   async getTransactionHistoryById(
     @Param('id') id: string,
@@ -73,12 +76,15 @@ export class TransactionHistoryController {
     return this.transactionHistoryService.findOne({ id: Number(id) });
   }
 
+  @UseGuards(AuthGuard)
   @Post('create')
   async createTransactionHistory(
+    @Req() request: RequestExtended,
     @Body()
     transactionHistoryData: TransactionHistoryApiType,
   ): Promise<TransactionHistoryModel> {
     const createInput: Prisma.TransactionHistoryCreateInput = {
+      tenant: { connect: { id: request.user.tenantId } },
       amount: transactionHistoryData.amount,
       transactionType: transactionHistoryData.transactionType,
     };

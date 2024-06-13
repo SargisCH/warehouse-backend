@@ -92,10 +92,12 @@ export class InventorySupplierService {
     user: User,
     data: InventorySupplierOrderDTO,
   ): Promise<InventorySupplierOrder> {
+    const { tenantId } = user;
     const isPartailCredit = data.paymentType === PaymentTypeEnum.PARTIAL_CREDIT;
     const createData = {
       paymentType: data.paymentType,
       partialCreditAmount: isPartailCredit ? data.partialCreditAmount : 0,
+      tenant: { connect: { id: tenantId } },
       inventorySupplier: {
         connect: { id: Number(id) },
       },
@@ -124,7 +126,6 @@ export class InventorySupplierService {
       0,
     );
 
-    const { tenantId } = user;
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: user.tenantId },
     });
@@ -198,14 +199,19 @@ export class InventorySupplierService {
     } else if (data.paymentType === PaymentTypeEnum.TRANSFER) {
       await this.prisma.transactionHistory.create({
         data: {
+          tenant: { connect: { id: tenantId } },
           amount,
-          inventorySupplierId: id,
+          inventorySupplier: { connect: { id } },
           transactionType: TransactionType.OUT,
         },
       });
     }
 
-    await this.syncInventory(orderCreated.inventorySupplierId, data.orderItems);
+    await this.syncInventory(
+      orderCreated.inventorySupplierId,
+      data.orderItems,
+      user,
+    );
     return orderCreated;
   }
 
@@ -218,6 +224,7 @@ export class InventorySupplierService {
       price: number;
       priceUnit: string;
     }>,
+    user: User,
   ): Promise<void> {
     const orderItemsData = [];
     const inventoryUpdatePromises = [];
@@ -226,14 +233,16 @@ export class InventorySupplierService {
         where: { id: oi.inventoryId },
       });
       inventoryUpdatePromises.push(() => {
-        const orderTotalPrice = oi.amount + oi.price;
-        const updatedAmount = inventory.amount + oi.amount;
+        const avgDB = inventory.avg * inventory.amount;
+        const orderTotalPrice = oi.amount * oi.price;
+        const totalCost = avgDB + orderTotalPrice;
         const avg =
-          orderTotalPrice +
-          (inventory.amount * inventory.price) / updatedAmount;
+          inventory.avg > 0
+            ? totalCost / (inventory.amount + oi.amount)
+            : oi.price;
         return this.prisma.inventory.update({
           where: { id: oi.inventoryId },
-          data: { avg, amount: updatedAmount },
+          data: { avg, amount: inventory.amount + oi.amount },
         });
       });
       await Promise.all(inventoryUpdatePromises.map((f) => f()));
@@ -244,10 +253,13 @@ export class InventorySupplierService {
         inventoryId: oi.inventoryId,
       });
     });
-    await this.inventoryService.createEntry({
-      inventorySupplierId,
-      inventoryEntryItems: orderItemsData,
-    });
+    await this.inventoryService.createEntry(
+      {
+        inventorySupplierId,
+        inventoryEntryItems: orderItemsData,
+      },
+      user,
+    );
   }
 
   async createOrderMany(

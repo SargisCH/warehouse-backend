@@ -75,22 +75,19 @@ export class ManagerService {
     };
 
     await cognito.adminCreateUser(params).promise();
-    console.log('aws created');
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: user.tenantId },
     });
-    console.log('tenant', JSON.stringify(tenant));
 
     await this.prisma.user.create({
       data: {
         email: data.email,
         companyName: tenant.name,
-        tenantId: user.tenantId,
+        tenant: { connect: { id: user.tenantId } },
         password: 'WTest123!',
         role: Role.MANAGER,
       },
     });
-    console.log('user created');
     return this.prisma.manager.create({
       data,
     });
