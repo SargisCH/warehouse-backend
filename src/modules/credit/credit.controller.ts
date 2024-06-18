@@ -136,7 +136,7 @@ export class CreditController {
       },
     });
     if (
-      creditDB.status === TransactionStatus.FINISHED &&
+      creditCreated.status === TransactionStatus.FINISHED &&
       creditDB.status !== creditCreated.status
     ) {
       const toPay = creditData.type === CreditType.TO_PAY;

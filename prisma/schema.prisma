@@ -50,13 +50,13 @@ model User {
 }
 
 model Tenant {
-  id                     Int                     @id @default(autoincrement())
+  id                     Int                      @id @default(autoincrement())
   name                   String
   User                   User[]
-  balance                Float                   @default(0)
-  Credit                 Credit?                 @relation(fields: [creditId], references: [id])
+  balance                Float                    @default(0)
+  Credit                 Credit[]
   creditId               Int?
-  currency               String?                 @default("AMD")
+  currency               String?                  @default("AMD")
   logo                   String?
   BalanceHistory         BalanceHistory[]
   Inventory              Inventory[]
@@ -64,13 +64,13 @@ model Tenant {
   Product                Product[]
   StockProduct           StockProduct[]
   ProductCategory        ProductCategory[]
-  Client                 Client?
-  Manager                Manager?
-  InventorySupplier      InventorySupplier?
-  InventorySupplierOrder InventorySupplierOrder?
-  Sale                   Sale?
-  InventoryEntryHistory  InventoryEntryHistory?
-  TransactionHistory     TransactionHistory?
+  Client                 Client[]
+  Manager                Manager[]
+  InventorySupplier      InventorySupplier[]
+  InventorySupplierOrder InventorySupplierOrder[]
+  Sale                   Sale[]
+  InventoryEntryHistory  InventoryEntryHistory[]
+  TransactionHistory     TransactionHistory[]
 }
 
 model TransactionHistory {
@@ -88,7 +88,7 @@ model TransactionHistory {
   date                DateTime?               @default(now())
   status              TransactionStatus?      @default(PENDING)
   tenant              Tenant                  @relation(fields: [tenantId], references: [id])
-  tenantId            Int                     @unique
+  tenantId            Int
 }
 
 model Credit {
@@ -123,7 +123,7 @@ model Inventory {
   SaleItem                   SaleItem[]
   InventoryEntryHistoryItem  InventoryEntryItem[]
   tenant                     Tenant                       @relation(fields: [tenantId], references: [id])
-  tenantId                   Int                          @unique
+  tenantId                   Int
 
   @@unique([name, tenantId])
 }
@@ -146,7 +146,7 @@ model TradeCredit {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
   tenant     Tenant   @relation(fields: [tenantId], references: [id])
-  tenantId   Int      @unique
+  tenantId   Int
 }
 
 model Product {
@@ -160,7 +160,7 @@ model Product {
   deleted      Boolean?      @default(false)
   StockProduct StockProduct?
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
-  tenantId     Int           @unique
+  tenantId     Int
 }
 
 model StockProduct {
@@ -174,7 +174,7 @@ model StockProduct {
   SaleItem    SaleItem[]
   costPrice   Float      @default(0)
   tenant      Tenant     @relation(fields: [tenantId], references: [id])
-  tenantId    Int        @unique
+  tenantId    Int
 }
 
 model ProductCategory {
@@ -183,7 +183,7 @@ model ProductCategory {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
   tenant     Tenant   @relation(fields: [tenantId], references: [id])
-  tenantId   Int      @unique
+  tenantId   Int
 }
 
 model Ingredient {
@@ -221,7 +221,7 @@ model Client {
   managerId          Int?
   BalanceHistory     BalanceHistory[]
   tenant             Tenant               @relation(fields: [tenantId], references: [id])
-  tenantId           Int                  @unique
+  tenantId           Int
 }
 
 model Manager {
@@ -234,7 +234,7 @@ model Manager {
   schedule    Schedule[]
   Client      Client[]
   tenant      Tenant     @relation(fields: [tenantId], references: [id])
-  tenantId    Int        @unique
+  tenantId    Int
 }
 
 model InventorySupplier {
@@ -249,7 +249,7 @@ model InventorySupplier {
   InventoryEntryItem    InventoryEntryItem[]
   InventoryEntryHistory InventoryEntryHistory[]
   tenant                Tenant                   @relation(fields: [tenantId], references: [id])
-  tenantId              Int                      @unique
+  tenantId              Int
 }
 
 model InventorySupplierOrder {
@@ -268,7 +268,7 @@ model InventorySupplierOrder {
   Credit              Credit?
   BalanceHistory      BalanceHistory[]
   tenant              Tenant                       @relation(fields: [tenantId], references: [id])
-  tenantId            Int                          @unique
+  tenantId            Int
 }
 
 model InventorySupplierOrderItem {
@@ -298,7 +298,7 @@ model Sale {
   TransactionHistory  TransactionHistory[]
   BalanceHistory      BalanceHistory[]
   tenant              Tenant               @relation(fields: [tenantId], references: [id])
-  tenantId            Int                  @unique
+  tenantId            Int
 }
 
 model SaleItem {
@@ -348,7 +348,7 @@ model BalanceHistory {
   date                DateTime?               @default(now())
   status              TransactionStatus
   tenant              Tenant                  @relation(fields: [tenantId], references: [id])
-  tenantId            Int                     @unique
+  tenantId            Int
   result              Float
   before              Float
 }
@@ -360,7 +360,7 @@ model InventoryEntryHistory {
   inventorySupplier   InventorySupplier?   @relation(fields: [inventorySupplierId], references: [id])
   inventorySupplierId Int?
   tenant              Tenant               @relation(fields: [tenantId], references: [id])
-  tenantId            Int                  @unique
+  tenantId            Int
 }
 
 model InventoryEntryItem {

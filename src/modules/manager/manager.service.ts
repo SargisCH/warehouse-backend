@@ -89,7 +89,7 @@ export class ManagerService {
       },
     });
     return this.prisma.manager.create({
-      data,
+      data: { ...data, tenant: { connect: { id: user.tenantId } } },
     });
   }
 
