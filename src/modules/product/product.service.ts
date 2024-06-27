@@ -107,17 +107,19 @@ export class ProductService {
       priceUnit: data.priceUnit,
       tenant: { connect: { id: data.tenantId } },
       ingredients: {
-        create: data.ingredients.map((ingredient) => {
-          return {
-            amount: ingredient.amount,
-            amountUnit: ingredient.amountUnit,
-            inventory: {
-              connect: {
-                id: ingredient.inventoryId,
+        create: (data.ingredients || [])
+          .filter((ing) => ing.inventoryId)
+          .map((ingredient) => {
+            return {
+              amount: ingredient.amount,
+              amountUnit: ingredient.amountUnit,
+              inventory: {
+                connect: {
+                  id: ingredient.inventoryId,
+                },
               },
-            },
-          };
-        }),
+            };
+          }),
       },
     };
 

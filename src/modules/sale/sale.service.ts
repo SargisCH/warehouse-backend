@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import {
   Sale,
+  SaleReturn,
   Prisma,
   User,
   TransactionType,
   TransactionStatus,
   CreditType,
+  SaleItem,
 } from '@prisma/client';
 import { BalanceHistoryService } from '../balanceHistory/balanceHistory.service';
 
@@ -51,6 +53,12 @@ export class SaleService {
       },
     });
   }
+  async findSaleItemsBySaleId(saleId: number): Promise<SaleItem[] | null> {
+    return this.prisma.saleItem.findMany({
+      where: { saleId: saleId },
+      include: { stockProduct: { include: { product: true } } },
+    });
+  }
   async getTotalPages(
     pageSize: number,
     where?: Prisma.SaleWhereInput,
@@ -79,6 +87,26 @@ export class SaleService {
         saleItems: {
           include: { stockProduct: { include: { product: true } } },
         },
+      },
+    });
+  }
+  async findAllReturns(params: {
+    skip?: number;
+    take?: number;
+    cursor?: Prisma.SaleReturnWhereUniqueInput;
+    where?: Prisma.SaleReturnWhereInput;
+    orderBy?: Prisma.SaleReturnOrderByWithRelationInput;
+  }): Promise<SaleReturn[]> {
+    const { skip, take, cursor, where, orderBy } = params;
+    return this.prisma.saleReturn.findMany({
+      skip,
+      take,
+      cursor,
+      where,
+      orderBy,
+      include: {
+        stockProduct: { include: { product: true } },
+        sale: { include: { client: true } },
       },
     });
   }
@@ -255,5 +283,381 @@ export class SaleService {
       where,
     });
     return res.count;
+  }
+  async returnSale(
+    saleId: number,
+    returnData: {
+      saleItems: Array<{ amount: number; stockProductId: number }>;
+    },
+    user: User,
+  ): Promise<void> {
+    const sale = (await this.findOne({
+      id: Number(saleId),
+    })) as any;
+    let amountToSpend = 0;
+    const promises = [];
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: user.tenantId },
+    });
+    if (sale.paymentType === PaymentTypeEnum.CASH) {
+      returnData.saleItems.forEach((saleItem) => {
+        const dbSaleItem = sale.saleItems.find(
+          (item: any) => item.stockProductId === saleItem.stockProductId,
+        );
+        if (saleItem.amount > dbSaleItem.amount) {
+          throw new Error(
+            'Amount of return should less then the original amount of order',
+          );
+        }
+        const amountPerProduct = saleItem.amount * dbSaleItem.price;
+        amountToSpend += amountPerProduct;
+        promises.push(async () => {
+          await this.prisma.stockProduct.update({
+            where: { id: saleItem.stockProductId },
+            data: {
+              inStock: { increment: saleItem.amount },
+            },
+          });
+
+          const returnSaleCreated = await this.prisma.saleReturn.create({
+            data: {
+              sale: { connect: { id: saleId } },
+              amount: saleItem.amount,
+              stockProduct: { connect: { id: saleItem.stockProductId } },
+              tenant: { connect: { id: user.tenantId } },
+            },
+          });
+
+          await this.prisma.balanceHistory.create({
+            data: {
+              tenant: { connect: { id: user.tenantId } },
+              amount: amountPerProduct,
+              before: tenant.balance,
+              result: tenant.balance - amountPerProduct,
+              return: { connect: { id: returnSaleCreated.id } },
+              direction: TransactionType.OUT,
+              status: TransactionStatus.FINISHED,
+            },
+          });
+        });
+      });
+      await Promise.all(promises.map((p) => p()));
+      await this.prisma.tenant.update({
+        where: { id: user.tenantId },
+        data: { balance: { decrement: amountToSpend } },
+      });
+    } else if (sale.paymentType === PaymentTypeEnum.CREDIT) {
+      const credit = await this.prisma.credit.findFirst({
+        where: { saleId: sale.id },
+      });
+      returnData.saleItems.forEach(async (saleItem) => {
+        const dbSaleItem = sale.saleItems.find(
+          (item: any) => item.stockProductId === saleItem.stockProductId,
+        );
+        if (saleItem.amount > dbSaleItem.amount) {
+          throw new Error(
+            'Amount of return should less then the original amount of order',
+          );
+        }
+        const amountPerProduct = saleItem.amount * dbSaleItem.price;
+        amountToSpend += amountPerProduct;
+        promises.push(async () => {
+          await this.prisma.stockProduct.update({
+            where: { id: saleItem.stockProductId },
+            data: {
+              inStock: { increment: saleItem.amount },
+            },
+          });
+
+          const returnSaleCreated = await this.prisma.saleReturn.create({
+            data: {
+              sale: { connect: { id: saleId } },
+              amount: saleItem.amount,
+              stockProduct: { connect: { id: saleItem.stockProductId } },
+              tenant: { connect: { id: user.tenantId } },
+            },
+          });
+          if (credit.status === TransactionStatus.FINISHED) {
+            await this.prisma.balanceHistory.create({
+              data: {
+                tenant: { connect: { id: user.tenantId } },
+                amount: amountPerProduct,
+                before: tenant.balance,
+                result: tenant.balance - amountPerProduct,
+                return: { connect: { id: returnSaleCreated.id } },
+                direction: TransactionType.OUT,
+                status: TransactionStatus.FINISHED,
+              },
+            });
+          }
+        });
+      });
+      await Promise.all(promises.map((p) => p()));
+
+      if (credit.status === TransactionStatus.FINISHED) {
+        await this.prisma.tenant.update({
+          where: { id: user.tenantId },
+          data: { balance: { decrement: amountToSpend } },
+        });
+      }
+    } else if (sale.paymentType === PaymentTypeEnum.TRANSFER) {
+      const transaction = await this.prisma.transactionHistory.findFirst({
+        where: { saleId: sale.id },
+      });
+      returnData.saleItems.forEach(async (saleItem) => {
+        const dbSaleItem = sale.saleItems.find(
+          (item: any) => item.stockProductId === saleItem.stockProductId,
+        );
+        if (saleItem.amount > dbSaleItem.amount) {
+          throw new Error(
+            'Amount of return should less then the original amount of order',
+          );
+        }
+        const amountPerProduct = saleItem.amount * dbSaleItem.price;
+        amountToSpend += amountPerProduct;
+        promises.push(async () => {
+          await this.prisma.stockProduct.update({
+            where: { id: saleItem.stockProductId },
+            data: {
+              inStock: { increment: saleItem.amount },
+            },
+          });
+
+          const returnSaleCreated = await this.prisma.saleReturn.create({
+            data: {
+              sale: { connect: { id: saleId } },
+              amount: saleItem.amount,
+              stockProduct: { connect: { id: saleItem.stockProductId } },
+              tenant: { connect: { id: user.tenantId } },
+            },
+          });
+          if (transaction.status === TransactionStatus.FINISHED) {
+            await this.prisma.balanceHistory.create({
+              data: {
+                tenant: { connect: { id: user.tenantId } },
+                amount: amountPerProduct,
+                before: tenant.balance,
+                result: tenant.balance - amountPerProduct,
+                return: { connect: { id: returnSaleCreated.id } },
+                direction: TransactionType.OUT,
+                status: TransactionStatus.FINISHED,
+              },
+            });
+          }
+        });
+      });
+      await Promise.all(promises.map((p) => p()));
+
+      if (transaction.status === TransactionStatus.FINISHED) {
+        await this.prisma.tenant.update({
+          where: { id: user.tenantId },
+          data: { balance: { decrement: amountToSpend } },
+        });
+      }
+    }
+  }
+  async cancelSale(saleId: number, user: User): Promise<void> {
+    const sale = await this.findOne({ id: Number(saleId) });
+    const saleItems = await this.findSaleItemsBySaleId(Number(saleId));
+    const promises = [];
+    let amountToAdd = 0;
+    if (sale.paymentType === PaymentTypeEnum.CASH) {
+      saleItems.forEach((si) => {
+        const amountPerProduct = si.amount * si.price;
+
+        amountToAdd += amountPerProduct;
+        promises.push(async () => {
+          this.prisma.stockProduct.update({
+            where: { id: si.stockProductId },
+            data: {
+              inStock: { increment: si.amount },
+            },
+          });
+          const tenant = await this.prisma.tenant.findUnique({
+            where: { id: user.tenantId },
+          });
+
+          await this.prisma.balanceHistory.create({
+            data: {
+              tenant: { connect: { id: user.tenantId } },
+              amount: amountPerProduct,
+              before: tenant.balance,
+              result: tenant.balance - amountPerProduct,
+              direction: TransactionType.OUT,
+              status: TransactionStatus.FINISHED,
+            },
+          });
+        });
+      });
+
+      await Promise.all(promises.map((p) => p()));
+      await this.prisma.tenant.update({
+        where: { id: user.tenantId },
+        data: { balance: { decrement: amountToAdd } },
+      });
+      await this.prisma.sale.update({
+        where: { id: saleId },
+        data: { canceled: true },
+      });
+    } else if (sale.paymentType === PaymentTypeEnum.CREDIT) {
+      let promises = [];
+      const credit = await this.prisma.credit.findFirst({
+        where: { saleId: sale.id },
+      });
+      saleItems.forEach((si) => {
+        const amountPerProduct = si.amount * si.price;
+
+        amountToAdd += amountPerProduct;
+        promises.push(async () => {
+          this.prisma.stockProduct.update({
+            where: { id: si.stockProductId },
+            data: {
+              inStock: { increment: si.amount },
+            },
+          });
+
+          if (credit.status === TransactionStatus.FINISHED) {
+            const tenant = await this.prisma.tenant.findUnique({
+              where: { id: user.tenantId },
+            });
+
+            await this.prisma.balanceHistory.create({
+              data: {
+                tenant: { connect: { id: user.tenantId } },
+                amount: amountPerProduct,
+                before: tenant.balance,
+                result: tenant.balance - amountPerProduct,
+                direction: TransactionType.OUT,
+                status: TransactionStatus.FINISHED,
+              },
+            });
+          }
+        });
+      });
+      await Promise.all(promises.map((p) => p()));
+      await this.prisma.sale.update({
+        where: { id: saleId },
+        data: { canceled: true },
+      });
+      if (credit.status === TransactionStatus.FINISHED) {
+        await this.prisma.tenant.update({
+          where: { id: user.tenantId },
+          data: { balance: { decrement: amountToAdd } },
+        });
+      }
+    } else if (sale.paymentType === PaymentTypeEnum.TRANSFER) {
+      let promises = [];
+      const transaction = await this.prisma.transactionHistory.findFirst({
+        where: { saleId: sale.id },
+      });
+      saleItems.forEach((si) => {
+        const amountPerProduct = si.amount * si.price;
+
+        amountToAdd += amountPerProduct;
+        promises.push(async () => {
+          this.prisma.stockProduct.update({
+            where: { id: si.stockProductId },
+            data: {
+              inStock: { increment: si.amount },
+            },
+          });
+
+          if (transaction.status === TransactionStatus.FINISHED) {
+            const tenant = await this.prisma.tenant.findUnique({
+              where: { id: user.tenantId },
+            });
+
+            await this.prisma.balanceHistory.create({
+              data: {
+                tenant: { connect: { id: user.tenantId } },
+                amount: amountPerProduct,
+                before: tenant.balance,
+                result: tenant.balance - amountPerProduct,
+                direction: TransactionType.OUT,
+                status: TransactionStatus.FINISHED,
+              },
+            });
+          }
+        });
+      });
+      await Promise.all(promises.map((p) => p()));
+      await this.prisma.sale.update({
+        where: { id: saleId },
+        data: { canceled: true },
+      });
+      if (transaction.status === TransactionStatus.FINISHED) {
+        await this.prisma.tenant.update({
+          where: { id: user.tenantId },
+          data: { balance: { decrement: amountToAdd } },
+        });
+      }
+    } else if (sale.paymentType === PaymentTypeEnum.PARTIAL_CREDIT) {
+      let promises = [];
+      const credit = await this.prisma.credit.findFirst({
+        where: { saleId: sale.id },
+      });
+      const total = saleItems.reduce((acc, item) => {
+        return acc + item.amount * item.price;
+      }, 0);
+
+      let cashAmount = total - sale.partialCreditAmount;
+      saleItems.forEach((si) => {
+        const amountPerProduct = si.amount * si.price;
+
+        amountToAdd += amountPerProduct;
+        promises.push(async () => {
+          this.prisma.stockProduct.update({
+            where: { id: si.stockProductId },
+            data: {
+              inStock: { decrement: si.amount },
+            },
+          });
+          const tenant = await this.prisma.tenant.findUnique({
+            where: { id: user.tenantId },
+          });
+          await this.prisma.balanceHistory.create({
+            data: {
+              tenant: { connect: { id: user.tenantId } },
+              amount: cashAmount,
+              before: tenant.balance,
+              result: tenant.balance - cashAmount,
+              direction: TransactionType.OUT,
+              status: TransactionStatus.FINISHED,
+            },
+          });
+          if (credit.status === TransactionStatus.FINISHED) {
+            const tenant = await this.prisma.tenant.findUnique({
+              where: { id: user.tenantId },
+            });
+
+            await this.prisma.balanceHistory.create({
+              data: {
+                tenant: { connect: { id: user.tenantId } },
+                amount: amountPerProduct,
+                before: tenant.balance,
+                result: tenant.balance - amountPerProduct,
+                direction: TransactionType.OUT,
+                status: TransactionStatus.FINISHED,
+              },
+            });
+          }
+        });
+      });
+      await Promise.all(promises.map((p) => p()));
+      await this.prisma.sale.update({
+        where: { id: saleId },
+        data: { canceled: true },
+      });
+      await this.prisma.tenant.update({
+        where: { id: user.tenantId },
+        data: { balance: { decrement: amountToAdd } },
+      });
+      if (credit.status === TransactionStatus.FINISHED) {
+        await this.prisma.tenant.update({
+          where: { id: user.tenantId },
+          data: { balance: { decrement: amountToAdd } },
+        });
+      }
+    }
   }
 }

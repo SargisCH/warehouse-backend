@@ -71,6 +71,10 @@ model Tenant {
   Sale                   Sale[]
   InventoryEntryHistory  InventoryEntryHistory[]
   TransactionHistory     TransactionHistory[]
+  Return                 SaleReturn[]
+  Unit                   Unit[]
+  PayoutType             PayoutType[]
+  Payout                 Payout[]
 }
 
 model TransactionHistory {
@@ -151,7 +155,7 @@ model TradeCredit {
 
 model Product {
   id           Int           @id @default(autoincrement())
-  name         String        @unique
+  name         String
   ingredients  Ingredient[]
   price        Float
   priceUnit    String
@@ -161,20 +165,23 @@ model Product {
   StockProduct StockProduct?
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
   tenantId     Int
+
+  @@unique([name, tenantId])
 }
 
 model StockProduct {
-  id          Int        @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   inStock     Float
   inStockUnit String
-  product     Product    @relation(fields: [productId], references: [id])
-  productId   Int        @unique
-  created_at  DateTime   @default(now())
-  updated_at  DateTime   @updatedAt
+  product     Product      @relation(fields: [productId], references: [id])
+  productId   Int          @unique
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
   SaleItem    SaleItem[]
-  costPrice   Float      @default(0)
-  tenant      Tenant     @relation(fields: [tenantId], references: [id])
+  costPrice   Float        @default(0)
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
   tenantId    Int
+  Return      SaleReturn[]
 }
 
 model ProductCategory {
@@ -299,6 +306,22 @@ model Sale {
   BalanceHistory      BalanceHistory[]
   tenant              Tenant               @relation(fields: [tenantId], references: [id])
   tenantId            Int
+  Return              SaleReturn[]
+  canceled            Boolean?
+}
+
+model SaleReturn {
+  id             Int              @id @default(autoincrement())
+  sale           Sale             @relation(fields: [saleId], references: [id])
+  saleId         Int
+  stockProduct   StockProduct     @relation(fields: [stockProductId], references: [id])
+  stockProductId Int
+  amount         Float
+  created_at     DateTime         @default(now())
+  updated_at     DateTime         @updatedAt
+  tenant         Tenant           @relation(fields: [tenantId], references: [id])
+  tenantId       Int
+  BalanceHistory BalanceHistory[]
 }
 
 model SaleItem {
@@ -341,6 +364,8 @@ model BalanceHistory {
   saleId              Int?
   order               InventorySupplierOrder? @relation(fields: [orderId], references: [id])
   orderId             Int?
+  return              SaleReturn?             @relation(fields: [returnId], references: [id])
+  returnId            Int?
   client              Client?                 @relation(fields: [clientId], references: [id])
   clientId            Int?
   inventorySupplier   InventorySupplier?      @relation(fields: [inventorySupplierId], references: [id])
@@ -351,6 +376,9 @@ model BalanceHistory {
   tenantId            Int
   result              Float
   before              Float
+  payout              Payout?                 @relation(fields: [payoutId], references: [id])
+  payoutId            Int?
+  cancelledSale       Boolean?
 }
 
 model InventoryEntryHistory {
@@ -375,4 +403,34 @@ model InventoryEntryItem {
   InventorySupplier   InventorySupplier?    @relation(fields: [inventorySupplierId], references: [id])
   inventorySupplierId Int?
   deleted             Boolean               @default(false)
+}
+
+model Unit {
+  id       Int    @id @default(autoincrement())
+  name     String
+  value    String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  tenantId Int
+}
+
+model PayoutType {
+  id       Int      @id @default(autoincrement())
+  name     String
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId Int
+  Payout   Payout[]
+
+  @@unique([name, tenantId])
+}
+
+model Payout {
+  id              Int              @id @default(autoincrement())
+  type            PayoutType       @relation(fields: [payoutTypeId], references: [id])
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  tenantId        Int
+  payoutTypeId    Int
+  otherPayoutType String?
+  amount          Float
+  created_at      DateTime         @default(now())
+  BalanceHistory  BalanceHistory[]
 }

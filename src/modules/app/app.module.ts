@@ -18,6 +18,7 @@ import { CreditModule } from '../credit/credit.module';
 import { TransactionHistoryModule } from '../transactionHistory/transactionHistory.module';
 import { ManagerModule } from '../manager/manager.module';
 import { BalanceHistory } from '../balanceHistory/balanceHistory.module';
+import { PayoutModule } from '../payout/payout.module';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -39,6 +40,7 @@ import { AppService } from './app.service';
     TransactionHistoryModule,
     ManagerModule,
     BalanceHistory,
+    PayoutModule,
   ],
   controllers: [AppController],
   providers: [AppService],
