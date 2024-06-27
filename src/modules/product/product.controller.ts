@@ -29,11 +29,18 @@ export class ProductController {
   @Get('/')
   async getAllProduct(
     @Req() request: RequestExtended,
-  ): Promise<ProductModel[]> {
+  ): Promise<{ products: ProductModel[]; totalWorth: number }> {
     const {
       user: { tenantId },
     } = request;
-    return this.productService.findAll({ where: { tenantId } });
+    const products = await this.productService.findAll({ where: { tenantId } });
+    const totalWorth = products.reduce((acc, curr) => {
+      return acc + curr.price * curr.inStock;
+    }, 0);
+    return {
+      products,
+      totalWorth,
+    };
   }
 
   @UseGuards(AuthGuard)
