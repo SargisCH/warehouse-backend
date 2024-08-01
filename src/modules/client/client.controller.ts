@@ -9,6 +9,7 @@ import {
   UseGuards,
   Req,
   Query,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   Client as ClientModel,
@@ -26,6 +27,7 @@ import { ManagerService } from '../manager/manager.service';
 import { ClientService } from './client.service';
 import { ClientDTO } from './client.dto';
 import { RequestExtended } from 'src/configs/types';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 @ApiTags('client')
 @Controller('/client')
@@ -106,6 +108,17 @@ export class ClientController {
     @Body()
     clientData: ClientDTO,
   ): Promise<ClientModel> {
+    if (!clientData.taxId) {
+      throw new BadRequestException('ՀՎՀՀ պարդտադիր դաշտ');
+    }
+    const client = await this.clientService.findOne({
+      taxId: clientData.taxId,
+    });
+    console.log('taxId', clientData.taxId, client);
+
+    if (client) {
+      throw new BadRequestException('ՀՎՀՀ արդեն գոյություն ունի');
+    }
     return this.clientService.create(clientData, request.user.tenantId);
   }
 
