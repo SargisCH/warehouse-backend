@@ -216,7 +216,7 @@ model Client {
   phoneNumber        String
   otherPhoneNumber   String
   email              String
-  taxId              String
+  taxId              String               @unique
   created_at         DateTime             @default(now())
   updated_at         DateTime             @updatedAt
   Sale               Sale[]
