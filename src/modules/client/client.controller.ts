@@ -27,7 +27,6 @@ import { ManagerService } from '../manager/manager.service';
 import { ClientService } from './client.service';
 import { ClientDTO } from './client.dto';
 import { RequestExtended } from 'src/configs/types';
-import { i18nValidationMessage } from 'nestjs-i18n';
 
 @ApiTags('client')
 @Controller('/client')
