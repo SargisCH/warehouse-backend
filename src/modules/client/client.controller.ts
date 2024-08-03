@@ -110,7 +110,7 @@ export class ClientController {
     if (!clientData.taxId) {
       throw new BadRequestException('ՀՎՀՀ պարդտադիր դաշտ');
     }
-    const client = await this.clientService.findOne({
+    const client = await this.clientService.findFirst({
       taxId: clientData.taxId,
     });
     console.log('taxId', clientData.taxId, client);

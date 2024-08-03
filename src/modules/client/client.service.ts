@@ -15,6 +15,13 @@ export class ClientService {
       where: clientCategoryWhereUniqueInput,
     });
   }
+  async findFirst(
+    clientInput: Prisma.ClientWhereInput,
+  ): Promise<Client | null> {
+    return this.prisma.client.findFirst({
+      where: clientInput,
+    });
+  }
 
   async findAll(
     params: {
