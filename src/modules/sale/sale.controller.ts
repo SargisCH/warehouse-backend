@@ -54,15 +54,7 @@ export class SaleController {
     const user = (request as any).user as User;
     const where: Prisma.SaleWhereInput = { tenantId: user.tenantId };
     let manager: Manager;
-    if (user.role === Role.MANAGER) {
-      manager = await this.managerService.findFirst({
-        email: user.email,
-      });
 
-      if (manager) {
-        where.client = { managerId: manager.id };
-      }
-    }
     if (Array.isArray(query?.client)) {
       where.clientId = { in: query.client.map((clId) => Number(clId)) };
     } else if (query.client) {
@@ -91,6 +83,20 @@ export class SaleController {
       };
     } else if (query.manager) {
       where.client = { managerId: Number(query.manager) };
+    }
+    if (user.role === Role.MANAGER) {
+      manager = await this.managerService.findFirst({
+        email: user.email,
+      });
+
+      if (manager) {
+        where.client = { managerId: manager.id };
+        if (query.startDate) {
+          const startDate = dayjs(query.startDate, 'YYYY-MM-DD', true);
+          if (startDate.isAfter(startDate.add(30, 'days'))) {
+          }
+        }
+      }
     }
     const page = query?.page || 1;
     const limit = query?.limit || 10;
