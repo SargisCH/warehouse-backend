@@ -660,4 +660,16 @@ export class SaleService {
       }
     }
   }
+  async getLatestOrderDetails(
+    stockProductId: number,
+  ): Promise<{ saleItem: SaleItem | undefined }> {
+    const orderItems = await this.prisma.saleItem.findMany({
+      where: { stockProductId: stockProductId },
+      orderBy: {
+        created_at: 'desc',
+      },
+      take: 1,
+    });
+    return { saleItem: orderItems.length && orderItems[0] };
+  }
 }
