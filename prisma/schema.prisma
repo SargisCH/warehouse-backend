@@ -322,6 +322,8 @@ model SaleReturn {
   tenant         Tenant           @relation(fields: [tenantId], references: [id])
   tenantId       Int
   BalanceHistory BalanceHistory[]
+  confirmed      Boolean          @default(false)
+  disposed       Boolean          @default(false)
 }
 
 model SaleItem {

@@ -151,7 +151,7 @@ export class SaleController {
       limit: number;
       created_at: string | Date;
     },
-  ): Promise<{ returnSaleList: SaleReturnModel[] }> {
+  ): Promise<{ saleId: number; returnItems: SaleReturn[] }[]> {
     const user = (request as any).user as User;
     const where: Prisma.SaleReturnWhereInput = {
       tenantId: user.tenantId,
@@ -181,9 +181,26 @@ export class SaleController {
       skip,
       take,
     });
-    return {
-      returnSaleList: saleList,
-    };
+    return saleList;
+  }
+
+  @Get('/return/:saleId')
+  @UseGuards(AuthGuard)
+  async getReturnBySaleId(
+    @Param('saleId') saleId: string,
+    @Req() request: Request,
+    @Query()
+    query?: {
+      client?: Array<string>;
+      page: number;
+      limit: number;
+      created_at: string | Date;
+    },
+  ): Promise<{ saleId: number; returnItems: SaleReturn[] }> {
+    const returns = await this.saleService.findAllReturns({
+      where: { saleId: Number(saleId) },
+    });
+    return returns[0];
   }
 
   @UseGuards(AuthGuard)
@@ -228,6 +245,51 @@ export class SaleController {
       return { message: 'Sale deletion failed' };
     }
   }
+  @UseGuards(AuthGuard)
+  @Post('/:id/return/confirm')
+  async confirmReturn(
+    @Req() request: RequestExtended,
+    @Param('id') id: string,
+    @Body() {},
+  ): Promise<{ message: string }> {
+    await this.saleService.confirmReturn(Number(id), request.user);
+    return { message: 'Return is confirmed' };
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('/return/confirm/:returnId')
+  async confirmReturnById(
+    @Req() request: RequestExtended,
+    @Param('returnId') returnId: string,
+    @Body() {},
+  ): Promise<{ message: string }> {
+    await this.saleService.confirmReturnByReturnId(
+      Number(returnId),
+      request.user,
+    );
+    return { message: 'Return is confirmed' };
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('/return/dispose/returnId')
+  async disposeReturnById(
+    @Param('returnId') returnId: string,
+    @Body() {},
+  ): Promise<{ message: string }> {
+    await this.saleService.disposeByReturnId(Number(returnId));
+    return { message: 'Return is confirmed' };
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('/:id/return/dispose')
+  async disposeReturn(
+    @Param('id') id: string,
+    @Body() {},
+  ): Promise<{ message: string }> {
+    await this.saleService.disposeReturn(Number(id));
+    return { message: 'Return is confirmed' };
+  }
+
   @UseGuards(AuthGuard)
   @Post('/:id/return')
   async returnSale(
