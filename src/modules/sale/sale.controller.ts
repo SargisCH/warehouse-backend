@@ -17,6 +17,7 @@ import {
   Manager,
   Role,
   Prisma,
+  SaleItem,
 } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 import dayjs from 'dayjs';
@@ -314,5 +315,12 @@ export class SaleController {
     await this.saleService.cancelSale(Number(id), request.user);
 
     return { message: 'The sale returned successfully' };
+  }
+  @UseGuards(AuthGuard)
+  @Get('/latest/:stockProductId')
+  async getLatestOrderDetails(
+    @Param('stockProductId') stockProductId: string,
+  ): Promise<{ saleItem: SaleItem | undefined }> {
+    return this.saleService.getLatestOrderDetails(Number(stockProductId));
   }
 }
