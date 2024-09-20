@@ -151,7 +151,7 @@ export class SaleController {
       limit: number;
       created_at: string | Date;
     },
-  ): Promise<{ saleId: number; returnItems: SaleReturn[] }[]> {
+  ): Promise<{ saleId: number; returnItems: SaleReturnModel[] }[]> {
     const user = (request as any).user as User;
     const where: Prisma.SaleReturnWhereInput = {
       tenantId: user.tenantId,
@@ -196,7 +196,7 @@ export class SaleController {
       limit: number;
       created_at: string | Date;
     },
-  ): Promise<{ saleId: number; returnItems: SaleReturn[] }> {
+  ): Promise<{ saleId: number; returnItems: SaleReturnModel[] }> {
     const returns = await this.saleService.findAllReturns({
       where: { saleId: Number(saleId) },
     });
