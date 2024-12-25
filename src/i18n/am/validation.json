@@ -1,0 +1,10 @@
+{
+  "inventory": {
+    "requiredName": "Անուն Պարտադիր դաշտ",
+    "requiredPrice": "Արժեք Պարտադիր դաշտ"
+  },
+  "client": {
+    "requiredTaxId": "Հվհհ պարտադիր դաշտ",
+    "uniqueTaxId": "Գոյություն ունեցող ՀՎՀՀ"
+  }
+}
