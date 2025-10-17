@@ -1,46 +1,32 @@
 import { Module } from '@nestjs/common';
 import { MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { DrizzleModule } from '../../drizzle/drizzle.module';
 
 import { UserModule } from '../user/user.module';
-import { InventoryModule } from '../inventory/inventory.module';
-import { ProductModule } from '../product/product.module';
-import { InventorySupplierModule } from '../inventorySupplier/inventorySupplier.module';
 import { AuthModule } from '../auth/auth.module';
-import { PrismaModule } from '../prisma/prisma.module';
 import { GLOBAL_CONFIG } from '../../configs/global.config';
 import { LoggerModule } from '../logger/logger.module';
 import { LoggerMiddleware } from '../../middlewares/logger.middleware';
-import { ProductCategoryModule } from '../productCategory/productCategory.module';
-import { SaleModule } from '../sale/sale.module';
-import { ClientModule } from '../client/client.module';
-import { CreditModule } from '../credit/credit.module';
-import { TransactionHistoryModule } from '../transactionHistory/transactionHistory.module';
-import { ManagerModule } from '../manager/manager.module';
-import { BalanceHistory } from '../balanceHistory/balanceHistory.module';
-import { PayoutModule } from '../payout/payout.module';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { WarehouseModule } from '../warehouse/warehouse.module';
+import { ProductGroupsModule } from '../product_groups/product_groups.module';
+import { ProductModule } from '../product/product.module';
+import { UnitModule } from '../unit/unit.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true, load: [() => GLOBAL_CONFIG] }),
+    DrizzleModule,
     LoggerModule,
-    PrismaModule,
     AuthModule,
     UserModule,
-    InventoryModule,
+    WarehouseModule,
+    ProductGroupsModule,
     ProductModule,
-    InventorySupplierModule,
-    ProductCategoryModule,
-    SaleModule,
-    ClientModule,
-    ConfigModule.forRoot({ isGlobal: true, load: [() => GLOBAL_CONFIG] }),
-    CreditModule,
-    TransactionHistoryModule,
-    ManagerModule,
-    BalanceHistory,
-    PayoutModule,
+    UnitModule,
   ],
   controllers: [AppController],
   providers: [AppService],

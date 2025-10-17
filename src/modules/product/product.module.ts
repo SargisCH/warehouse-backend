@@ -1,15 +1,25 @@
 import { Module } from '@nestjs/common';
 
-import { PrismaService } from '../prisma/prisma.service';
-import { UserService } from '../user/user.service';
-
+import { DrizzleModule } from '../../drizzle/drizzle.module';
 import { ProductController } from './product.controller';
+import { ProductRepository } from 'src/repositories/product.repository';
 import { ProductService } from './product.service';
+import { UserService } from '../user/user.service';
+import { UserRepository } from 'src/repositories/user.repository';
+import { TenantRepository } from 'src/repositories/tenant.repository';
+import { UserRoleRepository } from 'src/repositories/userRole.repository';
 
 @Module({
-  imports: [],
+  imports: [DrizzleModule],
   controllers: [ProductController],
-  providers: [ProductService, PrismaService, UserService],
+  providers: [
+    ProductRepository,
+    ProductService,
+    UserRepository,
+    UserService,
+    TenantRepository,
+    UserRoleRepository,
+  ],
   exports: [ProductService],
 })
 export class ProductModule {}

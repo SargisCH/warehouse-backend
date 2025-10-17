@@ -8,8 +8,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { User } from '@prisma/client';
-import { User as UserModel } from '@prisma/client';
 
 import { JWT_EXPIRY_SECONDS } from '../../shared/constants/global.constants';
 
@@ -43,7 +41,7 @@ export class AuthController {
   }
 
   @Post('register')
-  async register(@Body() user: RegisterUserDTO): Promise<User> {
+  async register(@Body() user: RegisterUserDTO) {
     return this.authService.register(user);
   }
 
@@ -55,9 +53,7 @@ export class AuthController {
   }
 
   @Post('get-user')
-  async getUser(
-    @Body() body: { email: string },
-  ): Promise<Omit<UserModel, 'password'>> {
+  async getUser(@Body() body: { email: string }) {
     console.log('body email', body.email);
     return this.authService.getUser(body.email);
   }
@@ -67,8 +63,8 @@ export class AuthController {
   async updateSettings(
     @Req() request: Request,
     @Body() body: { logo?: string; name?: string; fileType?: string },
-  ): Promise<Omit<UserModel, 'password'>> {
-    const user = (request as any).user as User;
+  ) {
+    const user = (request as any).user;
     return this.authService.updateSettings(body, user);
   }
 

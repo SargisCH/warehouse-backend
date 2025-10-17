@@ -22,9 +22,9 @@ export class AuthGuard implements CanActivate {
       const userEmail = cogUser.UserAttributes.find(
         (a) => a.Name === 'email',
       )?.Value;
-
       if (userEmail) {
         const user = await this.userService.findUser({ email: userEmail });
+
         request.user = user;
         return true;
       }

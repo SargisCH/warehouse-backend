@@ -1,16 +1,21 @@
 import { Module } from '@nestjs/common';
 
-import { PrismaService } from '../prisma/prisma.service';
-import { PrismaModule } from '../prisma/prisma.module';
-
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
-import { UserListener } from './user.listener';
+import { DrizzleModule } from '../../drizzle/drizzle.module';
+import { UserRepository } from 'src/repositories/user.repository';
+import { TenantRepository } from 'src/repositories/tenant.repository';
+import { UserRoleRepository } from 'src/repositories/userRole.repository';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [DrizzleModule],
   controllers: [UserController],
-  providers: [UserService, PrismaService, UserListener],
+  providers: [
+    UserService,
+    UserRepository,
+    TenantRepository,
+    UserRoleRepository,
+  ],
   exports: [UserService],
 })
 export class UserModule {}

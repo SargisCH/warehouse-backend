@@ -1,208 +1,96 @@
 import {
+  Body,
+  Param,
   Controller,
   Get,
-  Body,
-  Delete,
-  Param,
   Post,
-  Put,
   UseGuards,
-  Req,
+  Delete,
+  Query,
+  Put,
 } from '@nestjs/common';
-import { Product as ProductModel, StockProduct } from '@prisma/client';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
-import {
-  productAddInStockType,
-  productCreateType,
-  ProductService,
-} from './product.service';
-import { ProductResponseItem, StockProductDTO } from './product.dto';
+import { ProductService } from './product.service';
+import { ProductDTO, UpdateProductDto } from './product.dto';
 import { AuthGuard } from '../auth/auth.guard';
-import { RequestExtended } from 'src/configs/types';
 
 @ApiTags('product')
 @Controller('/product')
 export class ProductController {
   constructor(private productService: ProductService) {}
-  @UseGuards(AuthGuard)
-  @Get('/')
-  async getAllProduct(
-    @Req() request: RequestExtended,
-  ): Promise<{ products: ProductModel[]; totalWorth: number }> {
-    const {
-      user: { tenantId },
-    } = request;
-    const products = await this.productService.findAll({ where: { tenantId } });
-    const totalWorth = products.reduce((acc, curr) => {
-      return acc + curr.price * curr.inStock;
-    }, 0);
-    return {
-      products,
-      totalWorth,
-    };
-  }
 
+  @Get()
   @UseGuards(AuthGuard)
-  @Get('/stockProduct')
-  async getAllStockProduct(@Req() request: RequestExtended): Promise<{
-    stockProducts: StockProduct[];
-    totalWorth: number;
-  }> {
-    const {
-      user: { tenantId },
-    } = request;
-    return this.productService.findAllStockProducts({ where: { tenantId } });
-  }
-
-  @Get('/:id')
-  async getProductById(@Param('id') id: string): Promise<ProductModel> {
-    return this.productService.findOne({ id: Number(id) });
-  }
-
-  // @Get('feed')
-  // async getPublishedPosts(): Promise<Inventory[]> {
-  //   return this.inventoryService.findAll({
-  //     where: { published: true },
-  //   });
-  // }
-
-  // @Get('filtered-posts/:searchString')
-  // async getFilteredPosts(
-  //   @Param('searchString') searchString: string,
-  // ): Promise<Inventory[]> {
-  //   return this.inventoryService.findAll({
-  //     where: {
-  //       OR: [
-  //         {
-  //           title: { contains: searchString },
-  //         },
-  //         {
-  //           content: { contains: searchString },
-  //         },
-  //       ],
-  //     },
-  //   });
-  // }
-  @UseGuards(AuthGuard)
-  @Post('create')
-  async createProduct(
-    @Req() request: RequestExtended,
-    @Body()
-    postData: productCreateType,
-  ): Promise<ProductModel> {
-    const {
-      user: { tenantId },
-    } = request;
-    return this.productService.create({ ...postData, tenantId });
-  }
-  @UseGuards(AuthGuard)
-  @Post('addInStock')
-  async addInStock(
-    @Req() request: RequestExtended,
-    @Body()
-    postData: StockProductDTO,
-  ): Promise<StockProduct> {
-    return this.productService.addInStock(postData, request.user.tenantId);
-  }
-
-  @UseGuards(AuthGuard)
-  @Get('/stockProduct/:id')
-  async getStockProductById(@Param('id') id: string): Promise<StockProduct> {
-    return this.productService.findStockProductById({ id: Number(id) });
-  }
-
-  @UseGuards(AuthGuard)
-  @Put('/stockProduct/:id')
-  async updateStockProductById(
-    @Req() request: RequestExtended,
-    @Param('id') id: string,
-    @Body()
-    stockProductDto: StockProductDTO,
-  ): Promise<StockProduct> {
-    return this.productService.updateStockProduct(
-      stockProductDto,
-      request.user.tenantId,
-    );
-  }
-
-  @UseGuards(AuthGuard)
-  @Put('/makeProduct/:id')
-  async make(
-    @Req() request: RequestExtended,
-    @Param('id') id: string,
-    @Body()
-    productPayload: { amount: number },
-  ): Promise<ProductResponseItem> {
-    return this.productService.makeProduct(
-      {
-        ...productPayload,
-        id: Number(id),
-      },
-      request.user.tenantId,
-    );
-  }
-
-  @UseGuards(AuthGuard)
-  @Put('/updateAmount/:id')
-  async updateAmount(
-    @Req() request: RequestExtended,
-    @Param('id') id: string,
-    @Body()
-    updateAmountPayload: {
-      amount: number;
-      costPrice: number;
-    },
-  ): Promise<ProductResponseItem> {
-    return this.productService.updateAmount(
-      Number(id),
-      {
-        where: { id: Number(id) },
-        data: updateAmountPayload,
-      },
-      request.user.tenantId,
-    );
-  }
-
-  @UseGuards(AuthGuard)
-  @Put('/:id')
-  async editProduct(
-    @Req() request: RequestExtended,
-    @Param('id') id: string,
-    @Body()
-    productData: {
-      name: string;
-      inStock?: number;
-      inStockUnit: string;
-      noCalculation?: boolean;
-      price: number;
-      priceUnit: string;
-      inventoryId: string;
-      ingredients: Array<{
-        inventoryId: number;
-        amount: number;
-        amountUnit: string;
-      }>;
-    },
-  ): Promise<ProductModel> {
-    return this.productService.update({
-      where: { id: Number(id) },
-      data: { ...productData, tenantId: request.user.tenantId },
+  async getAll(
+    @Query('name') name: string,
+    @Query('forSale') forSale: boolean,
+    @Query('returnable') returnable: boolean,
+    @Query('fractional') fractional: boolean,
+    @Query('units') units: string,
+    @Query('groups') groups: string,
+    @Query('warehouses') warehouses: string,
+    @Query('sku') sku: string,
+    @Query('page') page: string,
+  ) {
+    return this.productService.findAll({
+      name,
+      forSale,
+      returnable,
+      fractional,
+      units: units?.split(','),
+      sku,
+      groups: groups?.split(','),
+      warehouses: warehouses?.split(','),
+      page: page ? Number(page) : 1,
     });
   }
 
+  @Post('/create')
+  @ApiOperation({ description: 'Create a product' })
+  @ApiBody({ type: ProductDTO })
   @UseGuards(AuthGuard)
+  async create(@Body() product: ProductDTO) {
+    return this.productService.create(product);
+  }
+
+  @Put('/:id')
+  @ApiOperation({ description: 'Update product' })
+  @ApiBody({ type: UpdateProductDto })
+  @UseGuards(AuthGuard)
+  async update(@Param('id') id: string, @Body() product: UpdateProductDto) {
+    return this.productService.update(Number(id), product);
+  }
+
+  @Get('/:id')
+  @ApiOperation({ description: 'Get a single product' })
+  @UseGuards(AuthGuard)
+  async getProductById(@Param('id') id: string) {
+    return this.productService.find({ id: Number(id) });
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiOperation({ description: 'Delete a product' })
   @Delete('/:id')
   async deleteProduct(@Param('id') id: string): Promise<{ message: string }> {
-    // await this.productService.deleteIngredients({ productId: Number(id) });
-    const prod = await this.productService.delete({ id: Number(id) });
-
-    if (prod.deleted) {
-      return {
-        message: 'Product delted successfully',
-      };
-    } else {
-      return { message: 'Product deletion failed' };
-    }
+    const prod = await this.productService.delete(Number(id));
+    return {
+      message: 'Product delted successfully',
+    };
+  }
+  @UseGuards(AuthGuard)
+  @ApiOperation({ description: 'Move to another warehouse' })
+  @Post('/move')
+  async move(
+    @Body()
+    body: {
+      warehouseId: number;
+      products: { id: number | string; quantity: number }[];
+    },
+  ): Promise<{ message: string }> {
+    await this.productService.move(body);
+    return {
+      message: 'Product moved successfully',
+    };
   }
 }

@@ -1,49 +1,51 @@
-import { Prisma, Role, Tenant, TransactionType, User } from '@prisma/client';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import AWS_SDK from 'aws-sdk';
 
-import { PrismaService } from '../prisma/prisma.service';
+import * as schema from '../../drizzle/schema';
+
 import { RegisterUserDTO } from '../auth/auth.dto';
+import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
+import { users, tenant as tenantTable, userRole } from 'src/drizzle/schema';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { eq } from 'drizzle-orm';
+import { UserRepository } from 'src/repositories/user.repository';
+import { TenantRepository } from 'src/repositories/tenant.repository';
+import { UserRoleRepository } from 'src/repositories/userRole.repository';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @Inject(DrizzleAsyncProvider)
+    private db: NodePgDatabase<typeof schema>,
+    private userRepository: UserRepository,
+    private tenantRepository: TenantRepository,
+    private userRoleRepository: UserRoleRepository,
+  ) {}
 
-  async findUser(
-    userWhereUniqueInput: Prisma.UserWhereUniqueInput,
-  ): Promise<User | null> {
-    return this.prisma.user.findUnique({
-      where: userWhereUniqueInput,
-      include: { tenant: true },
-    });
+  async findUser(where: { email?: string }) {
+    return this.userRepository.find({ email: where.email });
   }
-
-  async findTenant(
-    tenantWhereUniqueInput: Prisma.TenantWhereUniqueInput,
-  ): Promise<Tenant | null> {
-    return this.prisma.tenant.findUnique({
-      where: tenantWhereUniqueInput,
-    });
-  }
+  //
+  // async findTenant(
+  //   tenantWhereUniqueInput: Prisma.TenantWhereUniqueInput,
+  // ): Promise<Tenant | null> {
+  //   return this.prisma.tenant.findUnique({
+  //     where: tenantWhereUniqueInput,
+  //   });
+  // }
 
   async users(params: {
-    skip?: number;
-    take?: number;
-    cursor?: Prisma.UserWhereUniqueInput;
-    where?: Prisma.UserWhereInput;
-    orderBy?: Prisma.UserOrderByWithRelationInput;
-  }): Promise<User[]> {
-    const { skip, take, cursor, where, orderBy } = params;
-    return this.prisma.user.findMany({
-      skip,
-      take,
-      cursor,
-      where,
-      orderBy,
-    });
+    skip?: any;
+    take?: any;
+    cursor?: any;
+    where?: any;
+    orderBy?: any;
+  }) {
+    // const { skip, take, cursor, where, orderBy } = params;
+    return this.db.query.users.findMany({});
   }
 
-  async createUser(data: RegisterUserDTO): Promise<User> {
+  async createUser(data: RegisterUserDTO) {
     const cognito = new AWS_SDK.CognitoIdentityServiceProvider({
       region: 'us-east-1',
     });
@@ -53,54 +55,71 @@ export class UserService {
       Username: data.email,
       Password: data.password,
     };
-    const tenant = await this.prisma.tenant.create({
-      data: { name: data.companyName },
-    });
-    await cognito.signUp(params).promise();
-    return this.prisma.user.create({
-      data: { ...data, tenantId: tenant.id, role: Role.ADMIN },
-    });
-  }
-
-  async updateUser(params: {
-    where: Prisma.UserWhereUniqueInput;
-    data: Prisma.UserUpdateInput;
-  }): Promise<User> {
-    const { where, data } = params;
-    return this.prisma.user.update({
-      data,
-      where,
-    });
-  }
-
-  async deleteUser(where: Prisma.UserWhereUniqueInput): Promise<User> {
-    return this.prisma.user.delete({
-      where,
-    });
-  }
-  async updateTenantBalance(
-    tenantId: number,
-    direction: TransactionType,
-    amount: number,
-  ): Promise<void> {
-    if (direction === TransactionType.IN) {
-      await this.prisma.tenant.update({
-        where: {
-          id: tenantId,
-        },
-        data: {
-          balance: { increment: amount },
-        },
+    try {
+      const queryResult = await this.tenantRepository.create({
+        name: data.companyName,
       });
-    } else {
-      await this.prisma.tenant.update({
-        where: {
-          id: tenantId,
-        },
-        data: {
-          balance: { decrement: amount },
-        },
-      });
+    } catch (e) {
+      console.log(e);
     }
+
+    const tenant = await this.tenantRepository.find({ name: data.companyName });
+    if (tenant) {
+      console.log('tenant', tenant);
+    }
+    await cognito.signUp(params).promise();
+    const role = await this.userRoleRepository.find({ name: 'Admin' });
+    const res = await this.userRepository.create({
+      email: data.email,
+      password: data.password,
+      companyName: data.companyName,
+      roleId: role.id,
+      tenantId: tenant.id,
+    });
+    const user = await this.userRepository.find({ email: data.email });
+    delete user.password;
+    return { ...user };
   }
+  //
+  // async updateUser(params: {
+  //   where: Prisma.UserWhereUniqueInput;
+  //   data: Prisma.UserUpdateInput;
+  // }): Promise<User> {
+  //   const { where, data } = params;
+  //   return this.prisma.user.update({
+  //     data,
+  //     where,
+  //   });
+  // }
+  //
+  // async deleteUser(where: Prisma.UserWhereUniqueInput): Promise<User> {
+  //   return this.prisma.user.delete({
+  //     where,
+  //   });
+  // }
+  // async updateTenantBalance(
+  //   tenantId: number,
+  //   direction: TransactionType,
+  //   amount: number,
+  // ): Promise<void> {
+  //   if (direction === TransactionType.IN) {
+  //     await this.prisma.tenant.update({
+  //       where: {
+  //         id: tenantId,
+  //       },
+  //       data: {
+  //         balance: { increment: amount },
+  //       },
+  //     });
+  //   } else {
+  //     await this.prisma.tenant.update({
+  //       where: {
+  //         id: tenantId,
+  //       },
+  //       data: {
+  //         balance: { decrement: amount },
+  //       },
+  //     });
+  //   }
+  // }
 }

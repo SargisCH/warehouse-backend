@@ -1,16 +1,17 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { User } from '@prisma/client';
-import { User as UserModel } from '@prisma/client';
 import AWS_SDK from 'aws-sdk';
-import fs from 'fs';
 
 import { GLOBAL_CONFIG } from '../../configs/global.config';
 import { UserService } from '../user/user.service';
-import { PrismaService } from '../prisma/prisma.service';
 import { AuthHelpers } from '../../shared/helpers/auth.helpers';
 
 import { AuthResponseDTO, LoginUserDTO, RegisterUserDTO } from './auth.dto';
+import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
+import * as schema from 'src/drizzle/schema';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { eq } from 'drizzle-orm';
+
 AWS_SDK.config.update({
   region: 'us-west-2', // Replace with your desired region
   accessKeyId: process.env.AWS_ACCESS_KEY_ID, // Ensure these are set in your environment
@@ -19,8 +20,9 @@ AWS_SDK.config.update({
 @Injectable()
 export class AuthService {
   constructor(
+    @Inject(DrizzleAsyncProvider)
+    private db: NodePgDatabase<typeof schema>,
     private userService: UserService,
-    private prisma: PrismaService,
     private jwtService: JwtService,
   ) {}
 
@@ -61,7 +63,7 @@ export class AuthService {
       accessToken: accessToken,
     };
   }
-  public async register(user: RegisterUserDTO): Promise<User> {
+  public async register(user: RegisterUserDTO) {
     return this.userService.createUser(user);
   }
   public async verifyEmail({
@@ -83,14 +85,14 @@ export class AuthService {
     return { verified: true };
   }
 
-  public async getUser(email: string): Promise<Omit<UserModel, 'password'>> {
-    const user = await this.prisma.user.findUnique({
-      where: { email: email },
-      include: { tenant: true },
-    });
-    delete user.password;
-    console.log('user', user);
-    return user;
+  public async getUser(email: string) {
+    try {
+      const user = await this.userService.findUser({ email });
+      delete user.password;
+      return user;
+    } catch (e) {
+      console.log('aaaa', e);
+    }
   }
   public async updateSettings(
     body: {
@@ -98,13 +100,14 @@ export class AuthService {
       name?: string;
       fileType?: string;
     },
-    user: User,
-  ): Promise<Omit<UserModel, 'password'>> {
+    user: any,
+  ) {
     const s3 = new AWS_SDK.S3();
     const buffer = Buffer.from(body.logo.split(',')[1], 'base64');
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: user.tenantId },
-    });
+    const [tenant] = await this.db
+      .select()
+      .from(schema.tenant)
+      .where(eq(schema.tenant.id, user.tenantid || user.tenant));
     // Set up the S3 upload parameters
     const [, type] = body.fileType.split('/');
     const params = {
@@ -118,14 +121,11 @@ export class AuthService {
     try {
       // Upload the image to S3
       const data = await s3.upload(params).promise();
-      await this.prisma.tenant.update({
-        where: { id: user.id },
-        data: { logo: data.Location },
-      });
-      return this.prisma.user.findUnique({
-        where: { id: user.id },
-        include: { tenant: true },
-      });
+      // await this.db.update(schema.tenant).set({}) .tenant.update({
+      // where: { id: user.id },
+      // data: { logo: data.Location },
+      // });
+      return user;
     } catch (err) {
       console.error('Error uploading file:', err);
       throw err;

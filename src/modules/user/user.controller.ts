@@ -1,5 +1,4 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { User } from '@prisma/client';
 import { ApiTags } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../auth/auth.jwt.guard';
@@ -13,7 +12,7 @@ export class UserController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  async getAll(): Promise<User[]> {
+  async getAll() {
     return this.userService.users({});
   }
 }
