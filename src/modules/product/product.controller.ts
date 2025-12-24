@@ -85,7 +85,7 @@ export class ProductController {
     @Body()
     body: {
       warehouseId: number;
-      products: { id: number | string; quantity: number }[];
+      products: { productId: number | string; quantity: number }[];
     },
   ): Promise<{ message: string }> {
     await this.productService.move(body);

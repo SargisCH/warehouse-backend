@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  db:
+    container_name: warehouse_postgres
+    image: postgres
+    ports:
+      - '5435:5432'
+    volumes:
+      - data:/data/db
+    environment:
+      - POSTGRES_DB=warehouse
+      - POSTGRES_USER=warehouse_user
+      - POSTGRES_PASSWORD=1111
+
+volumes:
+  data: {}

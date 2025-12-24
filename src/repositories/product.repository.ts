@@ -1,5 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, eq, inArray, like, sql } from 'drizzle-orm';
+import {
+  and,
+  count,
+  eq,
+  getTableColumns,
+  inArray,
+  like,
+  sql,
+} from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
 import * as schema from 'src/drizzle/schema';
@@ -28,6 +36,9 @@ export class ProductRepository {
   private ingredientsTable = schema.ingredients;
   private productGroupTable = schema.productGroups;
   private inventoryTable = schema.inventory;
+  private unitTable = schema.units;
+  private warehouseTable = schema.warehouses;
+  private groupTable = schema.productGroups;
 
   public async find(where: {
     name?: string;
@@ -95,24 +106,67 @@ export class ProductRepository {
       );
     }
     if (filter.page) {
-      const offset = (filter.page - 1) * 10;
-      const products = await this.db.query.products.findMany({
-        where: and(...where),
-        with: { group: true, unit: true },
-        limit: 10,
-        offset,
-      });
+      try {
+        const offset = (filter.page - 1) * 10;
+        const products = await this.db.query.products.findMany({
+          where: and(...where),
+          with: { group: true, unit: true },
+          limit: 10,
+          offset,
+        });
 
-      const [{ total }] = await this.db
-        .select({ total: count() })
-        .from(this.table)
-        .where(and(...where));
-      return { data: products, totalCount: total };
+        const [{ total }] = await this.db
+          .select({ total: count() })
+          .from(this.table)
+          .where(and(...where));
+        const productJoined = await this.db
+          .select({
+            ...getTableColumns(this.table),
+            unit: {
+              id: this.unitTable.id,
+              name: this.unitTable.name,
+            },
+            group: {
+              id: this.groupTable.id,
+              name: this.groupTable.name,
+            },
+            inventory: sql`
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'warehouseId', ${this.inventoryTable.warehouseId},
+            'warehouseName', ${this.warehouseTable.name},
+            'quantity', ${this.inventoryTable.quantity}
+          )
+        ) FILTER (WHERE ${this.inventoryTable.warehouseId} IS NOT NULL),
+        '[]'
+      )
+    `.as('posts'),
+            totalStock:
+              sql<number>`SUM(${this.inventoryTable.quantity})`.mapWith(Number),
+          })
+          .from(this.table)
+          .leftJoin(
+            this.inventoryTable,
+            eq(this.inventoryTable.productId, this.table.id),
+          )
+          .leftJoin(this.unitTable, eq(this.unitTable.id, this.table.unitId))
+          .leftJoin(this.groupTable, eq(this.groupTable.id, this.table.groupId))
+          .leftJoin(
+            this.warehouseTable,
+            eq(this.warehouseTable.id, this.inventoryTable.warehouseId),
+          )
+          .groupBy(this.table.id, this.unitTable.id, this.groupTable.id);
+        return { data: productJoined, totalCount: total };
+      } catch (e) {
+        console.log('Error, ', e);
+      }
     }
     const products = await this.db.query.products.findMany({
       where: and(...where),
       with: { group: true, unit: true },
     });
+
     return { data: products };
   }
   public async create(
@@ -122,11 +176,13 @@ export class ProductRepository {
   ) {
     const [productGroup] = await this.db.select().from(this.productGroupTable);
     const groupName = productGroup.name;
-    const [productCreated] = await this.db
-      .insert(this.table)
-      .values({ ...product })
-      .returning();
+    let productCreated;
     try {
+      [productCreated] = await this.db
+        .insert(this.table)
+        .values({ ...product })
+        .returning();
+
       await this.db
         .update(this.table)
         .set({
@@ -209,25 +265,41 @@ export class ProductRepository {
     products,
   }: {
     warehouseId: number | string;
-    products: { id: number | string; quantity: number }[];
+    products: { productId: number | string; quantity: number }[];
   }) {
-    const productsToUpsert = products.map((product) => ({
-      warehouseId: Number(warehouseId),
-      productId: Number(product.id),
-      quantity: Number(product.quantity),
-    }));
-
-    return this.db
-      .insert(this.inventoryTable)
-      .values(productsToUpsert)
-      .onConflictDoUpdate({
-        target: [
-          this.inventoryTable.warehouseId,
-          this.inventoryTable.productId,
-        ],
-        set: {
-          quantity: sql`excluded.quantity`,
-        },
+    try {
+      await this.db.transaction(async (tx) => {
+        const productsToUpsert = products.map((product) => ({
+          warehouseId: Number(warehouseId),
+          productId: Number(product.productId),
+          quantity: Number(product.quantity),
+        }));
+        await tx
+          .insert(this.inventoryTable)
+          .values(productsToUpsert)
+          .onConflictDoUpdate({
+            target: [
+              this.inventoryTable.productId,
+              this.inventoryTable.warehouseId,
+            ],
+            set: {
+              quantity: sql`excluded.quantity`,
+            },
+          });
+        await tx
+          .update(this.table)
+          .set({
+            updatedAt: sql`now()`,
+          })
+          .where(
+            inArray(
+              this.table.id,
+              products.map((p) => Number(p.productId)),
+            ),
+          );
       });
+    } catch (e) {
+      console.log('Error', e);
+    }
   }
 }

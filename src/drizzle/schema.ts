@@ -7,6 +7,9 @@ import {
   timestamp,
   boolean,
   primaryKey,
+  check,
+  numeric,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import {
   InferInsertModel,
@@ -110,9 +113,10 @@ export const inventory = pgTable(
       .notNull(),
     quantity: integer('quantity').notNull().default(0),
   },
-  (t) => ({
-    pk: primaryKey({ columns: [t.productId, t.warehouseId] }),
-  }),
+  (t) => [
+    uniqueIndex('product_warehouse_id').on(t.productId, t.warehouseId),
+    check('amount_is_non_negative', sql`${t.quantity} >= 0`),
+  ],
 );
 
 export const productGroups = pgTable('product_groups', {

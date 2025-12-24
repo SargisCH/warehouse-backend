@@ -43,8 +43,8 @@ export class ProductService {
   }
   async move(body: {
     warehouseId: number;
-    products: { id: number | string; quantity: number }[];
+    products: { productId: number | string; quantity: number }[];
   }) {
-    return this.productRepository.move(body);
+    this.productRepository.move(body);
   }
 }
