@@ -15,6 +15,9 @@ import { WarehouseModule } from '../warehouse/warehouse.module';
 import { ProductGroupsModule } from '../product_groups/product_groups.module';
 import { ProductModule } from '../product/product.module';
 import { UnitModule } from '../unit/unit.module';
+import { DocumentModule } from '../document/document.module';
+import { SupplierModule } from '../supplier/supplier.module';
+import { SupplyModule } from '../supply/supply.module';
 
 @Module({
   imports: [
@@ -27,6 +30,9 @@ import { UnitModule } from '../unit/unit.module';
     ProductGroupsModule,
     ProductModule,
     UnitModule,
+    DocumentModule,
+    SupplierModule,
+    SupplyModule,
   ],
   controllers: [AppController],
   providers: [AppService],

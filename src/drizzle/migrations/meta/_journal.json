@@ -8,6 +8,27 @@
       "when": 1766568943386,
       "tag": "0000_fixed_magma",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1766641258487,
+      "tag": "0001_narrow_nightshade",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766643183289,
+      "tag": "0002_exotic_exiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1766644034610,
+      "tag": "0003_lovely_jubilee",
+      "breakpoints": true
     }
   ]
 }

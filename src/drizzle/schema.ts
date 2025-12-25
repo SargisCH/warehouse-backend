@@ -10,6 +10,7 @@ import {
   check,
   numeric,
   uniqueIndex,
+  varchar,
 } from 'drizzle-orm/pg-core';
 import {
   InferInsertModel,
@@ -136,12 +137,70 @@ export const usersRelations = relations(users, ({ one }) => ({
   }),
 }));
 
+export const documents = pgTable('documents', {
+  id: serial('id').primaryKey(),
+  name: text('name'),
+});
+
+export const supplier = pgTable('suppliers', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  tenantId: integer('tenant_id')
+    .notNull()
+    .references(() => tenant.id),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const supplies = pgTable('supplies', {
+  id: serial('id').primaryKey(),
+  documentId: integer('document_id').references(() => documents.id),
+  warehouseId: integer('warehouse_id').references(() => warehouses.id),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const supplyProducts = pgTable('supply_products', {
+  id: serial('id').primaryKey(),
+  supplyId: integer('supply_id').references(() => supplies.id),
+  productId: integer('product_id').references(() => products.id),
+  amount: integer('amount').notNull(),
+});
+
+export const supplyRelations = relations(supplies, ({ one, many }) => ({
+  document: one(documents, {
+    fields: [supplies.documentId],
+    references: [documents.id],
+  }),
+  warehouse: one(warehouses, {
+    fields: [supplies.warehouseId],
+    references: [warehouses.id],
+  }),
+  supplyProducts: many(supplyProducts),
+}));
+
+export const supplyProductsRelations = relations(supplyProducts, ({ one }) => ({
+  supply: one(supplies, {
+    fields: [supplyProducts.supplyId],
+    references: [supplies.id],
+  }),
+  product: one(products, {
+    fields: [supplyProducts.productId],
+    references: [products.id],
+  }),
+}));
+
 // Infer select model type
 export type User = InferSelectModel<typeof users>;
-
-// Infer insert model type
 export type UserInsert = InferInsertModel<typeof users>;
-
 export type Tenant = InferSelectModel<typeof tenant>;
 export type TenantInsert = InferInsertModel<typeof tenant>;
 export type Role = InferSelectModel<typeof userRole>;
@@ -154,3 +213,11 @@ export type Product = InferSelectModel<typeof products>;
 export type ProductInsert = InferInsertModel<typeof products>;
 export type IngredientInsert = InferInsertModel<typeof ingredients>;
 export type Ingredient = InferSelectModel<typeof ingredients>;
+export type Document = InferSelectModel<typeof documents>;
+export type DocumentInsert = InferInsertModel<typeof documents>;
+export type Supplier = InferSelectModel<typeof supplier>;
+export type SupplierInsert = InferInsertModel<typeof supplier>;
+export type Supply = InferSelectModel<typeof supplies>;
+export type SupplyInsert = InferInsertModel<typeof supplies>;
+export type SupplyProduct = InferSelectModel<typeof supplyProducts>;
+export type SupplyProductInsert = InferInsertModel<typeof supplyProducts>;
