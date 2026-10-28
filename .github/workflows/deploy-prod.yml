@@ -36,10 +36,9 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
-          : "${DEPLOY_HOST:?}" "${DEPLOY_USER:?}" "${DEPLOY_SSH_KEY:?}" "${DEPLOY_KNOWN_HOSTS:?}"
+          : "${DEPLOY_HOST:?}" "${DEPLOY_USER:?}" "${DEPLOY_SSH_KEY:?}"
           port="${DEPLOY_PORT:-22}"
           [[ "$port" =~ ^[0-9]+$ ]]
           [[ "$DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
@@ -49,7 +48,8 @@ jobs:
           hosts="$RUNNER_TEMP/deploy-known-hosts"
           trap 'rm -f "$key" "$hosts"' EXIT
           printf '%s\n' "$DEPLOY_SSH_KEY" > "$key"
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$hosts"
+          ssh-keyscan -T 15 -p "$port" -H "$DEPLOY_HOST" > "$hosts"
+          test -s "$hosts"
           chmod 600 "$key" "$hosts"
           options=(-i "$key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$hosts" -o ConnectTimeout=15)
           target="$DEPLOY_USER@$DEPLOY_HOST"
