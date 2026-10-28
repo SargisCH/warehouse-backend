@@ -29,6 +29,83 @@
       "when": 1766644034610,
       "tag": "0003_lovely_jubilee",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788362288726,
+      "tag": "0004_client_groups_sales_zones",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788955214662,
+      "tag": "0005_managers_clients",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788956699064,
+      "tag": "0006_sales_zone_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789046648627,
+      "tag": "0007_sales_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789047486511,
+      "tag": "0008_balance_entries_keep_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789999010986,
+      "tag": "0009_snack_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790021226574,
+      "tag": "0010_snack_gaps",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790021234212,
+      "tag": "0011_client_group_parent",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792401409192,
+      "tag": "0012_assistant_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792440354415,
+      "tag": "0013_assistant_plan_email",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793125220564,
+      "tag": "0014_manager_stock_allow_negative",
+      "breakpoints": true
     }
   ]
 }

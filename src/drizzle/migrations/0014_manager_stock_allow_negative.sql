@@ -1,0 +1,1 @@
+ALTER TABLE "manager_stock" DROP CONSTRAINT "manager_stock_is_non_negative";

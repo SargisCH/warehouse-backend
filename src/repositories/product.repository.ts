@@ -14,15 +14,13 @@ import * as schema from 'src/drizzle/schema';
 
 type ProductReturnType = schema.Product & { ingredients: schema.Ingredient[] };
 
-function generateCode(groupName: string, productId: number) {
+// A group without its own code falls back to letters taken from its name.
+function prefixFromName(groupName: string) {
   const nameSplitted = groupName.split(' ');
   if (nameSplitted.length < 3) {
-    return groupName.substring(0, 3).toUpperCase() + productId;
+    return groupName.substring(0, 3).toUpperCase();
   }
-  return (
-    nameSplitted.reduce((acc, curr) => acc + curr[0], '').toUpperCase() +
-    productId
-  );
+  return nameSplitted.reduce((acc, curr) => acc + curr[0], '').toUpperCase();
 }
 
 @Injectable()
@@ -143,7 +141,9 @@ export class ProductRepository {
       )
     `.as('posts'),
             totalStock:
-              sql<number>`SUM(${this.inventoryTable.quantity})`.mapWith(Number),
+              sql<number>`COALESCE(SUM(${this.inventoryTable.quantity}), 0)`.mapWith(
+                Number,
+              ),
           })
           .from(this.table)
           .leftJoin(
@@ -169,13 +169,48 @@ export class ProductRepository {
 
     return { data: products };
   }
+  private async skuPrefix(groupId: number | null): Promise<string> {
+    if (!groupId) return '';
+    const [group] = await this.db
+      .select()
+      .from(this.productGroupTable)
+      .where(eq(this.productGroupTable.id, groupId));
+    if (!group) return '';
+    return group.skuPrefix?.trim() || prefixFromName(group.name ?? '');
+  }
+
+  /**
+   * «Կոդ - գեներացվող ապրանքի խմբից»: the group code followed by a running
+   * number within the group, the way the ERP numbers them (group 11 gives
+   * 1101, 1102, …).
+   */
+  private async nextSku(
+    groupId: number | null,
+    productId: number,
+  ): Promise<string> {
+    const prefix = await this.skuPrefix(groupId);
+    if (!prefix) return String(productId);
+    const rows = await this.db
+      .select({ sku: this.table.sku })
+      .from(this.table)
+      .where(
+        and(
+          eq(this.table.groupId, groupId),
+          like(this.table.sku, `${prefix}%`),
+        ),
+      );
+    const highest = rows.reduce((max, row) => {
+      const suffix = Number(row.sku.slice(prefix.length));
+      return Number.isInteger(suffix) && suffix > max ? suffix : max;
+    }, 0);
+    return `${prefix}${String(highest + 1).padStart(2, '0')}`;
+  }
+
   public async create(
     product: schema.ProductInsert & {
       ingredients: Omit<schema.IngredientInsert, 'ingredientId'>[];
     },
   ) {
-    const [productGroup] = await this.db.select().from(this.productGroupTable);
-    const groupName = productGroup.name;
     let productCreated;
     try {
       [productCreated] = await this.db
@@ -186,7 +221,7 @@ export class ProductRepository {
       await this.db
         .update(this.table)
         .set({
-          sku: generateCode(groupName, productCreated.id),
+          sku: await this.nextSku(productCreated.groupId, productCreated.id),
           updatedAt: new Date(),
         })
         .where(eq(this.table.id, productCreated.id));
@@ -219,18 +254,19 @@ export class ProductRepository {
       .where(eq(this.table.id, id))
       .returning();
 
+    // The code only changes when the product moves to another group; an
+    // ordinary edit must not renumber it.
     try {
-      const [productGroup] = await this.db
-        .select()
-        .from(this.productGroupTable)
-        .where(eq(this.productGroupTable.id, productUpdated.groupId));
-      await this.db
-        .update(this.table)
-        .set({
-          sku: generateCode(productGroup.name, productUpdated.id),
-          updatedAt: new Date(),
-        })
-        .where(eq(this.table.id, productUpdated.id));
+      const prefix = await this.skuPrefix(productUpdated.groupId);
+      if (!productUpdated.sku || !productUpdated.sku.startsWith(prefix)) {
+        await this.db
+          .update(this.table)
+          .set({
+            sku: await this.nextSku(productUpdated.groupId, productUpdated.id),
+            updatedAt: new Date(),
+          })
+          .where(eq(this.table.id, productUpdated.id));
+      }
     } catch (e) {
       console.log(e);
     }
@@ -272,7 +308,7 @@ export class ProductRepository {
         const productsToUpsert = products.map((product) => ({
           warehouseId: Number(warehouseId),
           productId: Number(product.productId),
-          quantity: Number(product.quantity),
+          quantity: String(product.quantity),
         }));
         await tx
           .insert(this.inventoryTable)

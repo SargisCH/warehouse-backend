@@ -28,7 +28,7 @@ dotenv.config();
   await migrate(db, { migrationsFolder: migrationPath });
 
   // Insert default roles
-  for (const role of ['Super Admin', 'Admin', 'Manager']) {
+  for (const role of ['Super Admin', 'Admin', 'Manager', 'Deliverer']) {
     const existingUserRole = await db
       ?.select({
         name: allSchema.userRole.name,

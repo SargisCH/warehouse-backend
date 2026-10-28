@@ -51,6 +51,7 @@ export class AuthService {
       tenantId: userData.tenantId,
       companyName: userData.companyName,
       role: userData.role,
+      assistantAccess: userData.assistantAccess,
       // role: userData.role,
     };
 

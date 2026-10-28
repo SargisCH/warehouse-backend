@@ -21,10 +21,12 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/drizzle/migrate.ts",
     "db:seed": "tsx src/drizzle/seed.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "assistant:worker": "node --import tsx scripts/assistant-worker.ts",
+    "assistant:access": "node --import tsx scripts/assistant-access.ts",
+    "assistant:email-worker": "node --import tsx scripts/assistant-worker.ts --email-only"
   },
   "dependencies": {
-    "-": "^0.0.1",
     "@aws-sdk/client-cognito-identity-provider": "^3.499.0",
     "@nestjs/cli": "^9.2.0",
     "@nestjs/common": "^9.3.9",
@@ -99,6 +101,11 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1",
+      "^drizzle-orm$": "<rootDir>/../node_modules/drizzle-orm/index.cjs",
+      "^drizzle-orm/(.*)$": "<rootDir>/../node_modules/drizzle-orm/$1/index.cjs"
+    }
   }
 }

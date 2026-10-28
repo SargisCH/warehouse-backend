@@ -59,6 +59,12 @@ export class ProductDTO {
   @ApiProperty()
   groupId: number;
 
+  // «Արտադրող»
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ required: false })
+  manufacturer?: string;
+
   @IsBoolean()
   @IsOptional()
   @ApiProperty()

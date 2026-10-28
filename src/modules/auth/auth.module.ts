@@ -28,5 +28,6 @@ import { UserRoleRepository } from 'src/repositories/userRole.repository';
     UserRoleRepository,
   ],
   controllers: [AuthController],
+  exports: [UserService],
 })
 export class AuthModule {}

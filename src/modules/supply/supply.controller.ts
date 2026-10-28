@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UseGuards,
-  Get,
-  Query,
-} from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, Query } from '@nestjs/common';
 import { SupplyService } from './supply.service';
 import { CreateSupplyDto, FindAllSuppliesDto } from './supply.dto';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';

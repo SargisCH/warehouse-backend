@@ -1,16 +1,30 @@
-version: '3.8'
 services:
   db:
     container_name: warehouse_postgres
-    image: postgres
+    image: postgres:18
     ports:
-      - '5435:5432'
+      - '5442:5432'
     volumes:
-      - data:/data/db
+      # PGDATA is /var/lib/postgresql/18/docker, so the volume must cover that
+      # path. Mounting /data/db persisted nothing.
+      - data:/var/lib/postgresql
     environment:
       - POSTGRES_DB=warehouse
-      - POSTGRES_USER=warehouse_user
+      - POSTGRES_USER=sargis
       - POSTGRES_PASSWORD=1111
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sargis -d warehouse']
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   data: {}
+
+networks:
+  default:
+    ipam:
+      config:
+        # Must not overlap the WiFi LAN (172.18.0.0/21), which is what made the
+        # container unreachable over TCP and caused ECONNRESET on 5442.
+        - subnet: 10.77.0.0/24

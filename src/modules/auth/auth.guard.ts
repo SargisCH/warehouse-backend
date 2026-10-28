@@ -12,8 +12,25 @@ export class AuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const accessToken = this.extractTokenFromHeader(request);
+    const poolId = process.env.COGNITO_USER_POOL_ID || 'us-east-1_QsJSsFk4H';
+    const region = poolId.split('_')[0];
+    // GetUser validates the token with Cognito; also restrict which user pool we trust.
+    // Otherwise a token from another pool with the same email could impersonate a local account.
+    try {
+      const payload = JSON.parse(
+        Buffer.from(accessToken?.split('.')[1] || '', 'base64url').toString(),
+      );
+      if (
+        payload.iss !==
+          `https://cognito-idp.${region}.amazonaws.com/${poolId}` ||
+        payload.token_use !== 'access'
+      )
+        return false;
+    } catch {
+      return false;
+    }
     const cognito = new AWS_SDK.CognitoIdentityServiceProvider({
-      region: 'us-east-1',
+      region,
     });
     try {
       const cogUser = await cognito
@@ -26,7 +43,7 @@ export class AuthGuard implements CanActivate {
         const user = await this.userService.findUser({ email: userEmail });
 
         request.user = user;
-        return true;
+        return !!user?.id;
       }
       return false;
     } catch (e) {

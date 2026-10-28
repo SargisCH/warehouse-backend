@@ -102,4 +102,26 @@ export class UserRepository {
       .values({ ...user })
       .returning();
   }
+
+  /**
+   * The tenant's users holding a given role, e.g. the «առաքիչ» list a sales
+   * agent can be attached to.
+   * @returns id and email only - `users` carries no display name.
+   */
+  async findByRole(
+    tenantId: number,
+    roleName: string,
+  ): Promise<Array<{ id: string; email: string }>> {
+    return this.db
+      .select({ id: this.table.id, email: this.table.email })
+      .from(this.table)
+      .innerJoin(schema.userRole, eq(this.table.roleId, schema.userRole.id))
+      .where(
+        and(
+          eq(this.table.tenantId, tenantId),
+          eq(schema.userRole.name, roleName),
+        ),
+      )
+      .orderBy(this.table.email);
+  }
 }

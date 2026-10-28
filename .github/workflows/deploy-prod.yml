@@ -1,61 +1,57 @@
-name: Node.js CI
-
+name: Deploy backend to Kamatera
 on:
   push:
-    branches:
-      - test-branch # change to "master" or smth else
-
+    branches: [master]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: warehouse-api-production
+  cancel-in-progress: false
 jobs:
   deploy:
-
     runs-on: ubuntu-latest
-
+    environment: production
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v1
-      - name: Install Node.js
-        uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '16.x'
-
-      - name: Install npm dependencies
-        run: npm install --legacy-peer-deps
-
-      - name: Run build task
-        run: npm run build
-
-      - name: store-env
-        uses: Garryone/store-env@master
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test -- --runInBand
+      - run: npm run build
+      - name: Package release
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/src/main.js
+          test -f dist/src/drizzle/migrate.js
+          tar -czf "$RUNNER_TEMP/backend.tar.gz" dist package.json package-lock.json src/drizzle/migrations deploy/kamatera/ecosystem.config.cjs deploy/kamatera/deploy-release.sh
+      - name: Upload and activate release
+        shell: bash
         env:
-          PORT: 5001
-          NODE_ENV: production
-
-          DATABASE_NAME: db_name
-          DATABASE_HOST: localhost
-          DATABASE_USERNAME: ${{ secrets.DB_USER }}
-          DATABASE_PASSWORD: ${{ secrets.DB_PASS }}
-          DATABASE_PORT: 5432
-
-          APP_FRONTEND_URL: http://localhost:4200
-          JWT_SIGNATURE: secret12356789
-
-      - name: Copy build to Server
-        uses: GarryOne/ssh-deploy@master
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          ARGS: "-avzr --delete"
-          SOURCE: "/"
-          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
-          REMOTE_USER: ${{ secrets.REMOTE_USER }}
-          TARGET: /var/www/nest-prisma-starter/prod/prisma-api
-
-      - name: DB Sync & Start App
-        uses: appleboy/ssh-action@master
-        with:
-          script_stop: true
-          host: ${{ secrets.REMOTE_HOST }}
-          username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /var/www/nest-prisma-starter/prod/prisma-api
-            npx prisma migrate deploy
-            pm2 startOrReload prod.ecosystem.config.js --update-env --time
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          : "${DEPLOY_HOST:?}" "${DEPLOY_USER:?}" "${DEPLOY_SSH_KEY:?}" "${DEPLOY_KNOWN_HOSTS:?}"
+          port="${DEPLOY_PORT:-22}"
+          [[ "$port" =~ ^[0-9]+$ ]]
+          [[ "$DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          [[ "$DEPLOY_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
+          release="${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          key="$RUNNER_TEMP/deploy-key"
+          hosts="$RUNNER_TEMP/deploy-known-hosts"
+          trap 'rm -f "$key" "$hosts"' EXIT
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$hosts"
+          chmod 600 "$key" "$hosts"
+          options=(-i "$key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$hosts" -o ConnectTimeout=15)
+          target="$DEPLOY_USER@$DEPLOY_HOST"
+          scp -P "$port" "${options[@]}" "$RUNNER_TEMP/backend.tar.gz" "$target:/srv/warehouse-api/incoming/$release.tar.gz"
+          ssh -p "$port" "${options[@]}" "$target" "bash -s -- '$release'" < deploy/kamatera/deploy-release.sh

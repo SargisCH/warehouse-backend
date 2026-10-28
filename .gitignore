@@ -396,3 +396,11 @@ Temporary Items
 # Local
 .env
 dist
+
+# Local assistant worker settings
+.env.worker
+
+# Local deployment credentials and database backups
+ware_github
+ware_github.pub
+*.dump

@@ -1,0 +1,1 @@
+ALTER TABLE "client_groups" DROP COLUMN "is_accumulator";

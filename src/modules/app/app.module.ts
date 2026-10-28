@@ -18,6 +18,15 @@ import { UnitModule } from '../unit/unit.module';
 import { DocumentModule } from '../document/document.module';
 import { SupplierModule } from '../supplier/supplier.module';
 import { SupplyModule } from '../supply/supply.module';
+import { SalesZoneModule } from '../sales_zone/sales_zone.module';
+import { ClientGroupsModule } from '../client_groups/client_groups.module';
+import { ManagerModule } from '../manager/manager.module';
+import { ClientModule } from '../client/client.module';
+import { SaleModule } from '../sale/sale.module';
+import { PaymentModule } from '../payment/payment.module';
+import { StockTransferModule } from '../stock_transfer/stock_transfer.module';
+import { ReportModule } from '../report/report.module';
+import { AssistantModule } from '../assistant/assistant.module';
 
 @Module({
   imports: [
@@ -33,6 +42,15 @@ import { SupplyModule } from '../supply/supply.module';
     DocumentModule,
     SupplierModule,
     SupplyModule,
+    SalesZoneModule,
+    ClientGroupsModule,
+    ManagerModule,
+    ClientModule,
+    SaleModule,
+    PaymentModule,
+    StockTransferModule,
+    ReportModule,
+    AssistantModule,
   ],
   controllers: [AppController],
   providers: [AppService],

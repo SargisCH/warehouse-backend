@@ -2,15 +2,17 @@ import { Injectable, Inject } from '@nestjs/common';
 import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
 import * as schema from 'src/drizzle/schema';
 import { Supply, SupplyInsert } from 'src/drizzle/schema';
-import { eq, sql, or, ilike, inArray, and } from 'drizzle-orm';
+import { desc, eq, sql, or, ilike, inArray } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { CreateSupplyDto } from 'src/modules/supply/supply.dto';
+import { InventoryRepository } from './inventory.repository';
 
 @Injectable()
 export class SupplyRepository {
   constructor(
     @Inject(DrizzleAsyncProvider)
     private db: NodePgDatabase<typeof schema>,
+    private readonly inventory: InventoryRepository,
   ) {}
 
   async findAll({
@@ -50,7 +52,8 @@ export class SupplyRepository {
         schema.products,
         eq(schema.supplyProducts.productId, schema.products.id),
       )
-      .where(where);
+      .where(where)
+      .orderBy(desc(schema.supplies.id));
 
     const totalQuery = await this.db
       .select({
@@ -74,6 +77,7 @@ export class SupplyRepository {
 
     const supplies = await this.db.query.supplies.findMany({
       where: inArray(schema.supplies.id, supplyIds),
+      orderBy: [desc(schema.supplies.documentDate), desc(schema.supplies.id)],
       with: {
         warehouse: true,
         document: true,
@@ -101,50 +105,56 @@ export class SupplyRepository {
     return result[0];
   }
 
-  async create(createSupplyDto: CreateSupplyDto) {
+  /**
+   * Books a receipt: the document, its priced lines, and the stock landing in
+   * the warehouse. Lines come pre-priced from the service.
+   */
+  async create(
+    dto: CreateSupplyDto,
+    lines: Array<{
+      productId: number;
+      amount: string;
+      price: string;
+      total: string;
+    }>,
+    totalAmount: string,
+  ) {
     return this.db.transaction(async (tx) => {
       const [supply] = await tx
         .insert(schema.supplies)
         .values({
-          documentId: createSupplyDto.documentId,
-          warehouseId: createSupplyDto.warehouseId,
+          documentId: dto.documentId,
+          warehouseId: dto.warehouseId,
+          documentDate:
+            dto.documentDate ?? new Date().toISOString().slice(0, 10),
+          receiver: dto.receiver ?? null,
+          note: dto.note ?? null,
+          priceListId: dto.priceListId ?? null,
+          totalAmount,
         })
         .returning();
 
-      for (const product of createSupplyDto.products) {
-        await tx.insert(schema.supplyProducts).values({
-          supplyId: supply.id,
-          productId: product.productId,
-          amount: product.amount,
-        });
+      // Receipts are not tenant-scoped, so the number simply follows the id.
+      const [numbered] = await tx
+        .update(schema.supplies)
+        .set({ code: String(supply.id).padStart(6, '0') })
+        .where(eq(schema.supplies.id, supply.id))
+        .returning();
 
-        const [inventoryItem] = await tx
-          .select()
-          .from(schema.inventory)
-          .where(
-            and(
-              eq(schema.inventory.productId, product.productId),
-              eq(schema.inventory.warehouseId, createSupplyDto.warehouseId),
-            ),
-          );
+      await tx
+        .insert(schema.supplyProducts)
+        .values(lines.map((line) => ({ ...line, supplyId: supply.id })));
 
-        if (inventoryItem) {
-          await tx
-            .update(schema.inventory)
-            .set({
-              quantity: sql`${schema.inventory.quantity} + ${product.amount}`,
-            })
-            .where(eq(schema.inventory.productId, product.productId));
-        } else {
-          await tx.insert(schema.inventory).values({
-            productId: product.productId,
-            warehouseId: createSupplyDto.warehouseId,
-            quantity: product.amount,
-          });
-        }
+      for (const line of lines) {
+        await this.inventory.adjust(
+          dto.warehouseId,
+          line.productId,
+          line.amount,
+          tx,
+        );
       }
 
-      return supply;
+      return numbered;
     });
   }
 }

@@ -13,6 +13,7 @@ import { MyLogger } from './modules/logger/logger.service';
 import { InvalidFormExceptionFilter } from './filters/invalid.form.exception.filter';
 import { AllExceptionsFilter } from './filters/all.exceptions.filter';
 import { CognitoIdentityServiceProvider } from 'aws-sdk';
+import { corsOrigins } from './configs/cors-origins';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -28,7 +29,7 @@ async function bootstrap() {
 
   app.use(
     cors({
-      origin: process.env.FRONTEND_URL,
+      origin: corsOrigins(process.env),
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       credentials: true,
     }),

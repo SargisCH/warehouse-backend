@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { DrizzleModule } from 'src/drizzle/drizzle.module';
 import { SupplyRepository } from 'src/repositories/supply.repository';
+import { InventoryRepository } from 'src/repositories/inventory.repository';
+import { PriceListRepository } from 'src/repositories/price_list.repository';
 import { SupplyService } from './supply.service';
 import { SupplyController } from './supply.controller';
 import { UserService } from '../user/user.service';
@@ -13,6 +15,8 @@ import { UserRepository } from 'src/repositories/user.repository';
   controllers: [SupplyController],
   providers: [
     SupplyRepository,
+    InventoryRepository,
+    PriceListRepository,
     SupplyService,
     UserService,
     UserRepository,
