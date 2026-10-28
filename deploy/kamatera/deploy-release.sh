@@ -17,6 +17,16 @@ test -r "$archive" || fail "Missing or unreadable release archive: $archive"
 for directory in "$root/releases" "$root/shared/storage"; do
   test -d "$directory" && test -w "$directory" || fail "Missing or unwritable directory: $directory for SSH user $(id -un)"
 done
+# Non-interactive SSH does not load the deployment user's shell startup files.
+deployment_nvm_dir="${NVM_DIR:-$HOME/.nvm}"
+if [[ -s "$deployment_nvm_dir/nvm.sh" ]]; then
+  echo 'Loading Node 24 from nvm...'
+  export NVM_DIR="$deployment_nvm_dir"
+  set +u
+  source "$NVM_DIR/nvm.sh" --no-use || fail 'Unable to load nvm.'
+  nvm use 24 --silent || fail 'Install Node 24 for the deployment user with: nvm install 24'
+  set -u
+fi
 for tool in node npm pm2 curl tar flock; do
   command -v "$tool" >/dev/null || fail "$tool is unavailable in the non-interactive SSH PATH."
 done

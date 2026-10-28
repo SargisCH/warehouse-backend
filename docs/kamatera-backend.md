@@ -14,8 +14,9 @@ The older development workflow is a separate legacy pipeline; it is not used her
 
 Use a dedicated non-root SSH deployment account. Install Node **24**, npm, PM2,
 curl, tar, flock (util-linux), Nginx and a PostgreSQL client. Ensure `node`, `npm`
-and `pm2` are available in non-interactive SSH sessions; nvm initialization in an
-interactive shell alone is insufficient. CI and server must use the same Node
+and `pm2` are available in non-interactive SSH sessions. The deployment script
+loads nvm from `$NVM_DIR` or `~/.nvm` when present and selects Node 24. Install
+Node 24 and PM2 under that version for the same SSH deployment user. CI and server must use the same Node
 major version. Install PM2 globally using your normal server administration tools.
 
 Create directories owned by that deployment account (replace `deploy` with its
