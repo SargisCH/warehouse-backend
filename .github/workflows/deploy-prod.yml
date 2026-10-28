@@ -47,11 +47,26 @@ jobs:
           key="$RUNNER_TEMP/deploy-key"
           hosts="$RUNNER_TEMP/deploy-known-hosts"
           trap 'rm -f "$key" "$hosts"' EXIT
+          stage='preparing SSH files'
+          trap 'status=$?; echo "::error::Deployment failed while $stage (exit $status)"; exit "$status"' ERR
+          umask 077
           printf '%s\n' "$DEPLOY_SSH_KEY" > "$key"
-          ssh-keyscan -T 15 -p "$port" -H "$DEPLOY_HOST" > "$hosts"
-          test -s "$hosts"
+          stage='discovering the SSH host key'
+          echo 'Discovering SSH host key...'
+          if ! ssh-keyscan -T 15 -p "$port" -H "$DEPLOY_HOST" > "$hosts"; then
+            echo '::error::ssh-keyscan failed. The SSH banner alone does not confirm a successful host-key exchange.'
+            exit 1
+          fi
+          if ! test -s "$hosts"; then
+            echo '::error::SSH host-key discovery returned no keys.'
+            exit 1
+          fi
           chmod 600 "$key" "$hosts"
           options=(-i "$key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$hosts" -o ConnectTimeout=15)
           target="$DEPLOY_USER@$DEPLOY_HOST"
+          stage='uploading the release over SCP'
+          echo 'Uploading release...'
           scp -P "$port" "${options[@]}" "$RUNNER_TEMP/backend.tar.gz" "$target:/srv/warehouse-api/incoming/$release.tar.gz"
+          stage='activating the release on the server'
+          echo 'Activating release...'
           ssh -p "$port" "${options[@]}" "$target" "bash -s -- '$release'" < deploy/kamatera/deploy-release.sh
