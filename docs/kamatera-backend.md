@@ -50,11 +50,10 @@ secrets also work where environment secrets are unavailable):
 | `DEPLOY_USER` | Dedicated deployment account |
 | `DEPLOY_PORT` | SSH port; optional, defaults to 22 |
 | `DEPLOY_SSH_KEY` | Private deployment key; authorize its public key on the server |
-| `DEPLOY_KNOWN_HOSTS` | Verified server SSH host-key entry; for a custom port use `[host]:port` |
 
-Verify the host-key fingerprint through your server console before recording
-the known-hosts entry. The workflow requires host verification and never accepts
-an arbitrary key fetched during deployment. Allow SSH from the runner through
+The workflow fetches the server host key with `ssh-keyscan` at deployment time;
+no known-hosts secret is required. This does not independently verify the server's
+identity. Allow SSH from the runner through
 your server/provider firewall; standard GitHub-hosted runners do not have one
 fixed outbound IP. Database and application credentials are not needed in GitHub.
 
