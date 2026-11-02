@@ -125,7 +125,7 @@ describe('plan email outbox', () => {
     await new PlanEmailWorker(db, deliver).tick();
     expect(queries[0].for).toHaveBeenCalledWith('update', { skipLocked: true });
     expect(deliver).toHaveBeenCalledWith(
-      'developer@example.com',
+      'sargis9888@gmail.com',
       'Warehouse: plan v2 is ready for review',
       expect.stringContaining('https://assistant.example.com/plans/plan-id'),
       'email-job',

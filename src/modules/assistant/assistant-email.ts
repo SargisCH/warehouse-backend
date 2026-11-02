@@ -178,7 +178,8 @@ export class PlanEmailWorker {
         planReviewUrl(process.env.ASSISTANT_APP_URL, job.planId),
       );
       const messageId = await this.deliver(
-        job.email,
+        // Resend onboarding sender only permits the account's exact signup email.
+        'sargis9888@gmail.com',
         content.subject,
         content.text,
         job.id,
