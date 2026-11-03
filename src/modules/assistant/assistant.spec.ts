@@ -119,6 +119,41 @@ describe('assistant access boundaries', () => {
   });
 });
 
+describe('standalone feature requests', () => {
+  it('creates a tenant-owned request without a page and queues a plan', async () => {
+    const input = Object.assign(new CreateThreadDto(), {
+      mode: 'FEEDBACK',
+      body: '  Add a delivery planning page  ',
+    });
+    expect(await validate(input)).toEqual([]);
+    const { service, writes } = database([]);
+    await service.create(developer, input);
+    expect(writes[0]).toEqual(
+      expect.objectContaining({
+        tenantId: 7,
+        authorId: 'dev-id',
+        mode: 'FEEDBACK',
+        page: '',
+      }),
+    );
+    expect(writes[1].body).toBe('Add a delivery planning page');
+    expect(writes[2]).toEqual(
+      expect.objectContaining({ kind: 'PLAN', requestedBy: 'dev-id' }),
+    );
+  });
+  it('continues rejecting external page URLs', async () => {
+    const { service, db } = database([]);
+    await expect(
+      service.create(developer, {
+        mode: 'FEEDBACK',
+        body: 'New feature',
+        page: 'https://example.com',
+      }),
+    ).rejects.toThrow('Page must be an application path');
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+});
+
 describe('plan approval gate', () => {
   it('rejects contributor approval before querying storage', async () => {
     const { service, db } = database([]);

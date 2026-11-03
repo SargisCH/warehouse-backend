@@ -134,8 +134,8 @@ export class AssistantService {
     const body = input.body.trim();
     if (!body) throw new BadRequestException('Write a message first');
     // Store a path only. Query strings and hashes can contain tokens or business data.
-    const page = input.page.split(/[?#]/)[0];
-    if (!page.startsWith('/') || page.startsWith('//'))
+    const page = (input.page || '').split(/[?#]/)[0];
+    if (page && (!page.startsWith('/') || page.startsWith('//')))
       throw new BadRequestException('Page must be an application path');
     return this.db.transaction(async (tx) => {
       const [thread] = await tx
