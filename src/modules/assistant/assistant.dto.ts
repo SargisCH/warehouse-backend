@@ -9,7 +9,7 @@ import {
 export class CreateThreadDto {
   @IsIn(['QUESTION', 'FEEDBACK']) mode: 'QUESTION' | 'FEEDBACK';
   @IsString() @MinLength(1) @MaxLength(8000) body: string;
-  @IsString() @MaxLength(500) page: string;
+  @IsOptional() @IsString() @MaxLength(500) page?: string;
   @IsOptional() @IsString() @MaxLength(160) release?: string;
   @IsOptional() @IsString() @MaxLength(300) browser?: string;
 }
