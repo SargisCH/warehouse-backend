@@ -1,3 +1,5 @@
+import { FinitIntegrationGuard } from './finit-integration';
+import { FinitIntegrationController } from './finit-integration.controller';
 import { Module } from '@nestjs/common';
 import { DrizzleModule } from '../../drizzle/drizzle.module';
 import { AuthModule } from '../auth/auth.module';
@@ -8,9 +10,10 @@ import { GeminiClient } from './gemini.client';
 import { AssistantProcessor } from './assistant.processor';
 @Module({
   imports: [DrizzleModule, AuthModule],
-  controllers: [AssistantController],
+  controllers: [AssistantController, FinitIntegrationController],
   providers: [
     AssistantService,
+    FinitIntegrationGuard,
     AssistantGuard,
     GeminiClient,
     AssistantProcessor,

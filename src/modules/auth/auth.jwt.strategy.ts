@@ -33,7 +33,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       .select()
       .from(schema.users)
       .where(eq(schema.users.email, email));
-    if (!user) {
+    if (!user || user.email.toLowerCase().endsWith('@assistant.invalid')) {
       throw new UnauthorizedException();
     }
 

@@ -1,6 +1,7 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
+import { refreshSource } from './source-refresh';
 const exec = promisify(execFile);
 export const repositoryRoots = () => {
   // npm worker commands run from warehouse-backend; the frontend is its sibling.
@@ -30,20 +31,34 @@ export function allowedSource(file: string) {
     !/(^|\/)(auth|exclude|logger|migrations)(\/|\.)/i.test(file)
   );
 }
-export async function repositoryContext(text: string) {
+export function finitSource(file: string) {
+  return (
+    /^apps\/(web|api)\/src\//.test(file) &&
+    /\.(tsx?|css)$/.test(file) &&
+    !/(^|\/)(auth|database|migrate|main|assistant[^/]*)(\.|\/)/i.test(file)
+  );
+}
+export async function repositoryContext(text: string, project = 'warehouse') {
   const refs: Record<string, string> = {};
   const sections: string[] = [];
   const tokens = text.toLowerCase().match(/[a-z]{4,}/g) || [];
-  for (const [name, root] of Object.entries(repositoryRoots())) {
+  for (const [name, root] of Object.entries(
+    project === 'finit'
+      ? { finit: process.env.ASSISTANT_FINIT_REPO }
+      : repositoryRoots(),
+  )) {
     if (!root || !path.isAbsolute(root))
       throw new Error(
-        `Configure ASSISTANT_${name.toUpperCase()}_REPO as an absolute read-only checkout path before generating plans`,
+        `Configure ASSISTANT_${name.toUpperCase()}_REPO as an absolute writable source checkout path before generating plans`,
       );
-    const sha = await git(root, ['rev-parse', 'HEAD']);
+    const sha = await refreshSource(
+      root,
+      process.env[`ASSISTANT_${name.toUpperCase()}_SOURCE_BRANCH`],
+    );
     refs[name] = sha;
     const files = (await git(root, ['ls-tree', '-r', '--name-only', sha]))
       .split('\n')
-      .filter(allowedSource);
+      .filter(project === 'finit' ? finitSource : allowedSource);
     const score = (file: string) =>
       tokens.filter((t) => file.toLowerCase().includes(t)).length;
     files.sort((a, b) => score(b) - score(a) || a.localeCompare(b));

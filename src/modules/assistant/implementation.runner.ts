@@ -81,6 +81,7 @@ export class ImplementationRunner {
         .where(eq(threads.id, run.threadId))
         .for('update');
       if (
+        thread?.project === 'finit' ||
         !plan ||
         plan.threadId !== run.threadId ||
         actor?.assistantAccess !== 'DEVELOPER' ||

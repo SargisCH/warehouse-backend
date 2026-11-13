@@ -100,11 +100,35 @@ using Certbot, verify HTTPS, then enable Cloudflare with **Full (strict)** TLS.
 Bypass caching for the API hostname. Block public access to 3300 and 5432,
 including IPv6: the current API listens on all interfaces.
 
-## Planning worker comes next
+## Assistant worker
 
-This pipeline deploys the HTTP API only. Feedback planning also requires a
-separate worker plus committed frontend/backend Git checkouts, because the API
-release deliberately contains no Git repository. See [assistant.md](assistant.md).
+PM2 also starts/restarts `warehouse-assistant-worker` when
+`/srv/warehouse-api/shared/.env.worker` exists. It runs the release's compiled
+`dist/scripts/assistant-worker.js`, with that shared file selected through
+`DOTENV_CONFIG_PATH`. Without this file, deployment starts only the HTTP API.
+
+Create the file from `.env.worker.example`, restrict its permissions to `0600`,
+and use the API's database. Configure `ASSISTANT_BACKEND_REPO` and
+`ASSISTANT_FRONTEND_REPO` to dedicated committed Git checkouts outside the release
+directory, for example `/srv/warehouse-source/warehouse-backend` and
+`/srv/warehouse-source/warehouse-frontend`. The worker fetches origin and fast-forwards clean source checkouts before each
+feedback plan/regeneration. Optional `ASSISTANT_BACKEND_SOURCE_BRANCH` and
+`ASSISTANT_FRONTEND_SOURCE_BRANCH` pin the expected branches. The worker user
+needs write access and non-interactive Git read access to origin. Source follows
+the branch tip, which may differ from deployed code; API deployment does not
+update these checkouts. Keep coding disabled until
+its additional prerequisites are configured. See [assistant.md](assistant.md).
+
+After creating the environment file, deploy again or run:
+
+```sh
+pm2 startOrRestart /srv/warehouse-api/current/deploy/kamatera/ecosystem.config.cjs --update-env
+pm2 logs warehouse-assistant-worker --lines 50
+```
+
+Stop any manually started worker before switching to PM2, then run `pm2 save`
+after verifying it. The API HTTP smoke check does not verify worker health;
+submit a question and feedback to verify generation separately.
 
 References: [PM2 ecosystem configuration](https://pm2.keymetrics.io/docs/usage/application-declaration/),
 [GitHub deployment environments](https://docs.github.com/en/actions/concepts/workflows-and-actions/deployment-environments).

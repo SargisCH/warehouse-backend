@@ -39,6 +39,8 @@ export class AuthGuard implements CanActivate {
       const userEmail = cogUser.UserAttributes.find(
         (a) => a.Name === 'email',
       )?.Value;
+      // Assistant integration identities must never authenticate through Cognito.
+      if (userEmail?.toLowerCase().endsWith('@assistant.invalid')) return false;
       if (userEmail) {
         const user = await this.userService.findUser({ email: userEmail });
 

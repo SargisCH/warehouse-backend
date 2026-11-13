@@ -22,6 +22,7 @@ export const assistantThreads = pgTable(
     authorId: uuid('author_id')
       .notNull()
       .references(() => users.id),
+    project: text('project').notNull().default('warehouse'),
     mode: text('mode').notNull(),
     page: text('page').notNull(),
     release: text('release').notNull().default('unknown'),
@@ -37,6 +38,7 @@ export const assistantThreads = pgTable(
   },
   (t) => [
     index('assistant_threads_tenant_author').on(t.tenantId, t.authorId),
+    check('assistant_thread_project', sql`${t.project} in ('warehouse','finit')`),
     check('assistant_thread_mode', sql`${t.mode} in ('QUESTION','FEEDBACK')`),
   ],
 );
