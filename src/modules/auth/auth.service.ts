@@ -1,4 +1,9 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import AWS_SDK from 'aws-sdk';
 
@@ -87,13 +92,13 @@ export class AuthService {
   }
 
   public async getUser(email: string) {
-    try {
-      const user = await this.userService.findUser({ email });
-      delete user.password;
-      return user;
-    } catch (e) {
-      console.log('aaaa', e);
-    }
+    const user = await this.userService.findUser({ email });
+    if (!user)
+      throw new NotFoundException(
+        'No Warehouse account exists for this email. Contact your administrator.',
+      );
+    const { password, ...account } = user;
+    return account;
   }
   public async updateSettings(
     body: {

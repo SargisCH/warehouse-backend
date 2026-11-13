@@ -269,3 +269,48 @@ describe('input and coding path validation', () => {
     ).not.toThrow();
   });
 });
+
+describe('Finit integration conversation boundaries', () => {
+  const external = { ...contributor, project: 'finit' as const };
+  it('scopes contributor reads by project, tenant and author', async () => {
+    const { service, queries } = database([[]]);
+    await expect(service.thread(external, 'thread')).rejects.toThrow(
+      NotFoundException,
+    );
+    const dialect = new PgDialect();
+    const query = dialect.sqlToQuery(queries[0].where.mock.calls[0][0]);
+    expect(query.params).toEqual(
+      expect.arrayContaining(['finit', 7, 'author-id', 'thread']),
+    );
+  });
+  it('records the server-selected project on new conversations', async () => {
+    const { service, writes } = database([]);
+    await service.create(external, {
+      mode: 'QUESTION',
+      body: 'Help with expenses',
+    });
+    expect(writes[0]).toMatchObject({
+      project: 'finit',
+      tenantId: 7,
+      authorId: 'author-id',
+    });
+  });
+  it('blocks developer coding approval for Finit plans', async () => {
+    const { service } = database([[{ ...thread, project: 'finit' }]]);
+    await expect(service.approve(developer, 'thread', 'plan')).rejects.toThrow(
+      'Finit plans require manual implementation',
+    );
+  });
+  it('lets a developer mark manually implemented Finit feedback ready to test', async () => {
+    const { service, writes } = database([
+      [{ ...thread, project: 'finit' }],
+      [],
+    ]);
+    await service.setStatus(developer, 'thread', 'READY_TO_TEST');
+    expect(writes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ status: 'READY_TO_TEST' }),
+      ]),
+    );
+  });
+});

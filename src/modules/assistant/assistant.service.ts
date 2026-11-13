@@ -18,7 +18,12 @@ import {
 import { CreateThreadDto } from './assistant.dto';
 import { assertAssistantAccess } from './assistant.guard';
 
-type Actor = { id: string; tenantId: number; assistantAccess: string };
+type Actor = {
+  id: string;
+  tenantId: number;
+  assistantAccess: string;
+  project?: 'finit';
+};
 @Injectable()
 export class AssistantService {
   constructor(
@@ -45,6 +50,7 @@ export class AssistantService {
       .where(
         and(
           eq(threads.tenantId, user.tenantId),
+          user.project ? eq(threads.project, user.project) : undefined,
           user.assistantAccess === 'DEVELOPER'
             ? undefined
             : eq(threads.authorId, user.id),
@@ -73,6 +79,7 @@ export class AssistantService {
         and(
           eq(threads.id, id),
           eq(threads.tenantId, user.tenantId),
+          user.project ? eq(threads.project, user.project) : undefined,
           user.assistantAccess === 'DEVELOPER'
             ? undefined
             : eq(threads.authorId, user.id),
@@ -141,6 +148,7 @@ export class AssistantService {
       const [thread] = await tx
         .insert(threads)
         .values({
+          project: user.project || 'warehouse',
           tenantId: user.tenantId,
           authorId: user.id,
           mode: input.mode,
@@ -262,6 +270,10 @@ export class AssistantService {
     assertAssistantAccess(user, true);
     return this.db.transaction(async (tx) => {
       const thread = await this.thread(user, id, tx, true);
+      if (thread.project === 'finit')
+        throw new BadRequestException(
+          'Finit plans require manual implementation',
+        );
       const [latest] = await tx
         .select()
         .from(plans)
@@ -327,7 +339,11 @@ export class AssistantService {
         )
       )
         assertAssistantAccess(user, true);
-      if (status === 'READY_TO_TEST' && thread.status !== 'CODE_REVIEW')
+      if (
+        status === 'READY_TO_TEST' &&
+        thread.status !== 'CODE_REVIEW' &&
+        !(thread.project === 'finit' && thread.status === 'NEEDS_REVIEW')
+      )
         throw new ConflictException(
           'Review the implementation before marking it ready to test',
         );

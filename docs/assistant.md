@@ -47,7 +47,7 @@ Every request enforces permissions and tenant boundaries on the server. The acce
 
 ## Initial setup
 
-1. Review the changes in all three repos. Commit the code used for planning: only committed source is read; uncommitted changes are excluded.
+1. Review the changes in all three repos. Use clean committed source checkouts for planning. Before each feedback plan/regeneration, the worker fetches origin and fast-forwards their current branches; local changes or divergence fail the plan.
 2. Point warehouse-backend's `DATABASE_URL` at the intended testing database. Run `npm run db:migrate`. This applies **all pending migrations**, including `0012_assistant_review` (permissions, conversations, plans and runs) and `0013_assistant_plan_email` (provider-independent email outbox). Existing accounts default to `NONE`. No migration is needed when switching from SES to Resend.
 3. Assign existing accounts from warehouse-backend:
 
@@ -164,3 +164,51 @@ Tests cover permissions, tenant isolation, stale/duplicate approvals, coding pat
 Failed generation can be retried from the developer inbox. An implementation retry requires a newly reviewed plan version; inspect any workspace/PRs before retrying. Interrupted RUNNING AI/coding jobs are not automatically replayed. Pending coding stays queued while coding is disabled.
 
 Keep feedback tables when resetting testing business data. The existing backend deployment workflows still reference Prisma and must be reconciled with Drizzle and the actual hosting setup before deployment.
+
+## Finit integration
+
+See [Finit server integration](finit-integration.md). Finit users authenticate through Better Auth and a contributor-only server credential, without Cognito accounts.
+
+## Automatic source refresh before plans
+
+Before every feedback plan or developer-requested plan regeneration, the worker
+fetches `origin` and fast-forwards the dedicated source checkouts. Warehouse uses
+both backend and frontend checkouts; Finit uses its monorepo checkout. Product
+questions do not fetch source. There is no timer, public shell endpoint, or
+message-controlled Git command, repository, remote or branch.
+
+By default the worker updates each checkout's currently checked-out branch.
+Optionally pin the branch in the worker environment:
+
+```dotenv
+ASSISTANT_BACKEND_SOURCE_BRANCH=master
+ASSISTANT_FRONTEND_SOURCE_BRANCH=main
+ASSISTANT_FINIT_SOURCE_BRANCH=main
+```
+
+These are examples: use each repository's actual intended staging branch.
+A pin must match the branch checked out on the server; the worker never switches
+branches automatically. Clone each repository once as the worker's Linux user.
+The same user needs write access and non-interactive read access to origin,
+including an SSH deploy key and verified known_hosts entry when using SSH URLs.
+Git authentication prompts and repository hooks are disabled during refresh.
+The updater never installs dependencies or runs repository scripts.
+
+Only clean, attached, fast-forwardable checkouts are accepted. Tracked changes,
+untracked files (excluding Git-ignored files), unpushed commits, divergence,
+missing branches and failed fetches fail the plan with a controlled error. There
+is no fallback to stale source, automatic reset, stash or merge commit. Correct
+the checkout/access problem, then regenerate the plan in the review app.
+
+Refresh is serialized per Git common directory, across worker processes, using
+`assistant-source-refresh.lock` inside that directory. A worker waits up to 90
+seconds for a busy checkout. If a worker is killed and leaves a stale lock, stop
+all workers using the checkout, inspect it, remove that lock, then restart. Do
+not remove a lock while another worker may own it. Fetches time out after 60
+seconds. Plans record the fetched commit SHA and read source by that immutable
+SHA, so later refreshes do not change a plan's evidence.
+
+Source follows the latest configured branch, which may include code not yet
+deployed. Updating source does not deploy or execute it. Deployments still use
+their separate workflows. Run `npm run test:source-refresh` for local Git-based
+refresh/isolation tests; they use temporary repositories without external access.

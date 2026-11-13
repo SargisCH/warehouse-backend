@@ -54,3 +54,28 @@ describe('Cognito user-pool boundary', () => {
     expect(request.user).toBe(user);
   });
 });
+
+it('rejects reserved assistant identities even with a valid Cognito token', async () => {
+  const pool = process.env.COGNITO_USER_POOL_ID || 'us-east-1_QsJSsFk4H';
+  const region = pool.split('_')[0];
+  (
+    AWS.CognitoIdentityServiceProvider as unknown as jest.Mock
+  ).mockImplementation(() => ({
+    getUser: () => ({
+      promise: async () => ({
+        UserAttributes: [
+          { Name: 'email', Value: 'finit-hash@assistant.invalid' },
+        ],
+      }),
+    }),
+  }));
+  const service = { findUser: jest.fn() };
+  const { context: ctx } = context(
+    token({
+      iss: `https://cognito-idp.${region}.amazonaws.com/${pool}`,
+      token_use: 'access',
+    }),
+  );
+  expect(await new AuthGuard(service as any).canActivate(ctx)).toBe(false);
+  expect(service.findUser).not.toHaveBeenCalled();
+});

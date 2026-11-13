@@ -53,7 +53,7 @@ export class UserRepository {
       tenant: true,
       role: true,
     },
-  ): Promise<User> {
+  ): Promise<User | null> {
     const whereQuery = Object.keys(where).map((key) =>
       eq(this.table[key], where[key]),
     );
@@ -63,30 +63,33 @@ export class UserRepository {
       .where(and(...whereQuery));
 
     if (include?.role && include.tenant) {
-      const [{ users: user, tenants: tenant, user_role: role }] =
-        await baseQuery
-          .leftJoin(schema.userRole, eq(this.table.roleId, schema.userRole.id))
-          .leftJoin(schema.tenant, eq(this.table.tenantId, schema.tenant.id));
-
+      const [row] = await baseQuery
+        .leftJoin(schema.userRole, eq(this.table.roleId, schema.userRole.id))
+        .leftJoin(schema.tenant, eq(this.table.tenantId, schema.tenant.id));
+      if (!row) return null;
+      const { users: user, tenants: tenant, user_role: role } = row;
       return this.buildUserResponse(user, tenant, role);
     }
     if (include?.role) {
-      const [{ users: user, user_role: role }] = await baseQuery.leftJoin(
+      const [row] = await baseQuery.leftJoin(
         schema.userRole,
         eq(this.table.roleId, schema.userRole.id),
       );
-
+      if (!row) return null;
+      const { users: user, user_role: role } = row;
       return this.buildUserResponse(user, null, role);
     }
     if (include?.tenant) {
-      const [{ users: user, tenants: tenant }] = await baseQuery.leftJoin(
+      const [row] = await baseQuery.leftJoin(
         schema.tenant,
         eq(this.table.tenantId, schema.tenant.id),
       );
-
+      if (!row) return null;
+      const { users: user, tenants: tenant } = row;
       return this.buildUserResponse(user, tenant);
     }
     const [user] = await baseQuery;
+    if (!user) return null;
     return this.buildUserResponse(user);
   }
 
