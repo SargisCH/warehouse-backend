@@ -25,5 +25,8 @@ jobs:
       - name: Run build task
         run: npm run build
 
+      - name: Check deployment activation
+        run: npm run test:deployment
+
       - name: Run tests
         run: npm test -- --runInBand
