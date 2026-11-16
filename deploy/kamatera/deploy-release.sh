@@ -31,6 +31,7 @@ for tool in node npm pm2 curl tar flock; do
   command -v "$tool" >/dev/null || fail "$tool is unavailable in the non-interactive SSH PATH."
 done
 [[ "$(node -p 'process.versions.node.split(".")[0]')" == 24 ]] || { echo 'Node 24 required' >&2; exit 1; }
+deployment_node="$(node -p 'process.execPath')"
 previous="$(readlink -f "$root/current" || true)"
 stage='extracting the release'
 echo 'Extracting release...'
@@ -45,26 +46,66 @@ npm ci --omit=dev --no-audit --no-fund
 stage='applying database migrations'
 echo 'Applying database migrations...'
 node dist/src/drizzle/migrate.js
+# PM2 may keep a previously registered absolute script path on restart. Check
+# process metadata rather than treating a successful HTTP response as activation.
+api_matches_release() {
+  pm2 jlist | node -e '
+    const fs = require("fs");
+    const path = require("path");
+    const target = path.resolve(process.argv[1]);
+    const apps = JSON.parse(fs.readFileSync(0, "utf8"))
+      .filter(app => app.name === "warehouse-api");
+    const env = apps[0]?.pm2_env;
+    const matches = apps.length === 1 &&
+      env.pm_exec_path === path.join(target, "dist/src/main.js") &&
+      env.pm_cwd === target &&
+      env.exec_interpreter === process.execPath &&
+      (process.argv[2] !== "online" || env.status === "online");
+    process.exit(matches ? 0 : 1);
+  ' "$1" "${2:-paths}"
+}
+
+start_release() {
+  local target="$1"
+  local config="$target/deploy/kamatera/ecosystem.config.cjs"
+  pm2 startOrRestart "$config" --interpreter "$deployment_node" --update-env || return
+  if ! api_matches_release "$target"; then
+    echo 'PM2 retained stale API configuration; recreating warehouse-api.'
+    if pm2 describe warehouse-api >/dev/null 2>&1; then
+      pm2 delete warehouse-api || return
+    fi
+    pm2 start "$config" --only warehouse-api --interpreter "$deployment_node" --update-env || return
+  fi
+  api_matches_release "$target"
+}
+
 rollback() {
+  local deploy_status=$?
+  trap - ERR
   echo "Deployment failed while $stage." >&2
   echo 'Activation failed; restoring previous code (database migrations remain applied).' >&2
   if [[ -n "$previous" && -f "$previous/deploy/kamatera/ecosystem.config.cjs" ]]; then
-    pm2 startOrRestart "$previous/deploy/kamatera/ecosystem.config.cjs" --update-env
-    pm2 save
+    if start_release "$previous"; then
+      pm2 save || echo 'Failed to save restored PM2 configuration.' >&2
+    else
+      echo 'Failed to restore the previous API release.' >&2
+    fi
   else
     pm2 delete warehouse-api || true
   fi
+  exit "$deploy_status"
 }
 trap rollback ERR
 stage='starting the API with PM2'
 echo 'Starting API with PM2...'
-pm2 startOrRestart "$destination/deploy/kamatera/ecosystem.config.cjs" --update-env
+start_release "$destination"
 stage='checking API startup'
 port="$(node -e 'require("dotenv").config(); const p = process.env.PORT || "3300"; if (!/^\d+$/.test(p)) process.exit(1); process.stdout.write(p)')"
 healthy=false
 for attempt in {1..15}; do
   sleep 2
-  if curl --fail --silent --output /dev/null "http://127.0.0.1:$port/api/v1/"; then
+  if api_matches_release "$destination" online &&
+    curl --fail --silent --output /dev/null "http://127.0.0.1:$port/api/v1/"; then
     healthy=true
     break
   fi

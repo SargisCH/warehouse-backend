@@ -70,7 +70,7 @@ the **compiled** Drizzle migrator. The SQL files keep the `src/drizzle/migration
 path expected by that migrator. All pending migrations run, so review them and
 take a database backup before deploying to an existing database.
 
-PM2 runs the release's absolute `dist/src/main.js` path in fork mode. A deployment
+PM2 runs the release's absolute `dist/src/main.js` path in fork mode using the deployment's Node interpreter. Activation verifies the API's script path, working directory, interpreter, and online status; if PM2 retains an old configuration, it recreates only `warehouse-api` before accepting the health check. A deployment
 causes a brief restart. After an HTTP smoke check succeeds, the release is saved
 in PM2 and the `current` symlink is advanced. The smoke check verifies HTTP
 startup; it does not prove database queries or authentication work. Check a real
