@@ -78,6 +78,11 @@ export class CreateClientDto {
   @IsInt()
   managerId?: number | null;
 
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsInt()
+  delivererId?: number | null;
+
   // «Գնացուցակ»: the list this buyer's sales are priced from by default.
   @ApiPropertyOptional({ nullable: true })
   @IsOptional()
@@ -168,6 +173,11 @@ export class UpdateClientDto {
   @IsOptional()
   @IsInt()
   managerId?: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsInt()
+  delivererId?: number | null;
 
   // «Գնացուցակ»: the list this buyer's sales are priced from by default.
   @ApiPropertyOptional({ nullable: true })

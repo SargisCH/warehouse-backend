@@ -21,15 +21,26 @@ import {
   sql,
 } from 'drizzle-orm';
 
-export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  email: text('email').unique().notNull(),
-  password: text('password'),
-  companyName: text('company_name'),
-  roleId: integer('role_id'),
-  tenantId: integer('tenant_id'),
-  assistantAccess: varchar('assistant_access', { length: 20 }).notNull().default('NONE'),
-}, t => [check('users_assistant_access', sql`${t.assistantAccess} in ('NONE','CONTRIBUTOR','DEVELOPER')`)]);
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    email: text('email').unique().notNull(),
+    password: text('password'),
+    companyName: text('company_name'),
+    roleId: integer('role_id'),
+    tenantId: integer('tenant_id'),
+    assistantAccess: varchar('assistant_access', { length: 20 })
+      .notNull()
+      .default('NONE'),
+  },
+  (t) => [
+    check(
+      'users_assistant_access',
+      sql`${t.assistantAccess} in ('NONE','CONTRIBUTOR','DEVELOPER')`,
+    ),
+  ],
+);
 
 export const userRole = pgTable('user_role', {
   id: serial('id').primaryKey(),
@@ -227,6 +238,9 @@ export const salesZones = pgTable(
     name: text('name').notNull(),
     // «Մենեջեր»: the agent responsible for the zone.
     managerId: integer('manager_id').references(() => managers.id),
+    delivererId: integer('deliverer_id').references(
+      (): AnyPgColumn => managers.id,
+    ),
     // «Փակվել է»: a retired zone, kept for history rather than deleted.
     isClosed: boolean('is_closed').notNull().default(false),
     // «Կուտակիչ»: the zone this one rolls up into - itself a sales zone, so a
@@ -250,9 +264,7 @@ export const clientGroups = pgTable('client_groups', {
   name: text('name').notNull(),
   // «Կուտակիչ»: the group this one rolls up into - itself a client group, the
   // same way a sales zone nests under its accumulator.
-  parentId: integer('parent_id').references(
-    (): AnyPgColumn => clientGroups.id,
-  ),
+  parentId: integer('parent_id').references((): AnyPgColumn => clientGroups.id),
   salesZoneId: integer('sales_zone_id').references(() => salesZones.id),
   tenantId: integer('tenant_id')
     .notNull()
@@ -367,6 +379,9 @@ export const clients = pgTable(
       .default('0'),
     salesZoneId: integer('sales_zone_id').references(() => salesZones.id),
     managerId: integer('manager_id').references(() => managers.id),
+    delivererId: integer('deliverer_id').references(
+      (): AnyPgColumn => managers.id,
+    ),
     tenantId: integer('tenant_id')
       .notNull()
       .references(() => tenant.id),
@@ -627,10 +642,9 @@ export const creditAllocations = pgTable(
     targetSaleId: integer('target_sale_id').references(() => sales.id, {
       onDelete: 'cascade',
     }),
-    targetRefundId: integer('target_refund_id').references(
-      () => payments.id,
-      { onDelete: 'cascade' },
-    ),
+    targetRefundId: integer('target_refund_id').references(() => payments.id, {
+      onDelete: 'cascade',
+    }),
     // Set when a «մարում» made the link rather than the source itself.
     repaymentId: integer('repayment_id').references(() => repayments.id, {
       onDelete: 'cascade',
@@ -846,4 +860,10 @@ export type StockTransferItemInsert = InferInsertModel<
   typeof stockTransferItems
 >;
 
-export { assistantThreads, assistantMessages, assistantPlans, assistantRuns, assistantPlanEmails } from '../modules/assistant/assistant.schema';
+export {
+  assistantThreads,
+  assistantMessages,
+  assistantPlans,
+  assistantRuns,
+  assistantPlanEmails,
+} from '../modules/assistant/assistant.schema';

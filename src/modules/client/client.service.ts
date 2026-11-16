@@ -85,6 +85,7 @@ export class ClientService {
     await this.assertGroupBelongsToTenant(dto.clientGroupId, tenantId);
     await this.assertZoneBelongsToTenant(dto.salesZoneId, tenantId);
     await this.assertManagerBelongsToTenant(dto.managerId, tenantId);
+    await this.assertManagerBelongsToTenant(dto.delivererId, tenantId);
     await this.assertPriceListBelongsToTenant(dto.priceListId, tenantId);
   }
 
@@ -138,7 +139,9 @@ export class ClientService {
     id: number,
     updateClientDto: UpdateClientDto,
   ) {
-    await this.findOne(id);
+    const client = await this.findOne(id);
+    if (client.tenantId !== user.tenantId)
+      throw new NotFoundException('Client not found');
     await this.assertLinksBelongToTenant(updateClientDto, user.tenantId);
     return this.clientRepository.update(id, updateClientDto);
   }

@@ -20,6 +20,11 @@ export class CreateSalesZoneDto {
   @IsInt()
   managerId?: number | null;
 
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsInt()
+  delivererId?: number | null;
+
   // «Փակվել է»
   @ApiPropertyOptional({ default: false })
   @IsOptional()
@@ -44,6 +49,11 @@ export class UpdateSalesZoneDto {
   @IsOptional()
   @IsInt()
   managerId?: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsInt()
+  delivererId?: number | null;
 
   @ApiPropertyOptional()
   @IsOptional()

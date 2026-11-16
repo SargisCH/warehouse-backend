@@ -112,7 +112,9 @@ export class ManagerService {
   }
 
   async update(user: User, id: number, updateManagerDto: UpdateManagerDto) {
-    await this.findOne(id);
+    const manager = await this.findOne(id);
+    if (manager.tenantId !== user.tenantId)
+      throw new NotFoundException('Manager not found');
     await this.assertZoneBelongsToTenant(
       updateManagerDto.salesZoneId,
       user.tenantId,
