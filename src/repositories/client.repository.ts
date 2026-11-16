@@ -56,6 +56,7 @@ export class ClientRepository {
       overdueDebtLimit: schema.clients.overdueDebtLimit,
       salesZoneId: schema.clients.salesZoneId,
       managerId: schema.clients.managerId,
+      delivererId: schema.clients.delivererId,
       tenantId: schema.clients.tenantId,
       createdAt: schema.clients.createdAt,
       updatedAt: schema.clients.updatedAt,

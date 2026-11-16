@@ -48,6 +48,7 @@ export class SalesZoneRepository {
       code: schema.salesZones.code,
       name: schema.salesZones.name,
       managerId: schema.salesZones.managerId,
+      delivererId: schema.salesZones.delivererId,
       isClosed: schema.salesZones.isClosed,
       parentId: schema.salesZones.parentId,
       tenantId: schema.salesZones.tenantId,

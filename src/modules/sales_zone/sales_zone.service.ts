@@ -73,6 +73,10 @@ export class SalesZoneService {
       createSalesZoneDto.managerId,
       user.tenantId,
     );
+    await this.assertManagerBelongsToTenant(
+      createSalesZoneDto.delivererId,
+      user.tenantId,
+    );
     await this.assertParentIsAttachable(
       createSalesZoneDto.parentId,
       user.tenantId,
@@ -109,9 +113,15 @@ export class SalesZoneService {
   }
 
   async update(user: User, id: number, updateSalesZoneDto: UpdateSalesZoneDto) {
-    await this.findOne(id);
+    const zone = await this.findOne(id);
+    if (zone.tenantId !== user.tenantId)
+      throw new NotFoundException('Sales zone not found');
     await this.assertManagerBelongsToTenant(
       updateSalesZoneDto.managerId,
+      user.tenantId,
+    );
+    await this.assertManagerBelongsToTenant(
+      updateSalesZoneDto.delivererId,
       user.tenantId,
     );
     await this.assertParentIsAttachable(
