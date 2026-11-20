@@ -8,7 +8,7 @@ import * as schema from 'src/drizzle/schema';
 import { User } from 'src/drizzle/schema';
 import {
   InventoryRepository,
-  isStockShortage,
+  WarehouseStockShortage,
 } from 'src/repositories/inventory.repository';
 import { ManagerRepository } from 'src/repositories/manager.repository';
 import { ManagerStockRepository } from 'src/repositories/manager_stock.repository';
@@ -87,6 +87,7 @@ export class StockTransferService {
     productId: number,
     delta: bigint,
     tx: Executor,
+    allowNegativeStock = false,
   ) {
     try {
       if ('warehouseId' in holder) {
@@ -95,6 +96,7 @@ export class StockTransferService {
           productId,
           fromMilli(delta),
           tx,
+          allowNegativeStock,
         );
       } else {
         await this.managerStock.adjust(
@@ -105,10 +107,12 @@ export class StockTransferService {
         );
       }
     } catch (e) {
-      if (isStockShortage(e)) {
-        throw new BadRequestException(
-          `Not enough of product ${productId} to move`,
-        );
+      if (e instanceof WarehouseStockShortage) {
+        throw new BadRequestException({
+          code: 'INSUFFICIENT_WAREHOUSE_STOCK',
+          message: `Not enough of product ${productId} to move`,
+          productId,
+        });
       }
       throw e;
     }
@@ -162,7 +166,13 @@ export class StockTransferService {
 
     return this.transferRepository.transaction(async (tx) => {
       for (const item of items) {
-        await this.move(from, item.line.productId, -item.quantityMilli, tx);
+        await this.move(
+          from,
+          item.line.productId,
+          -item.quantityMilli,
+          tx,
+          dto.kind === 'WAREHOUSE' && dto.allowNegativeStock === true,
+        );
         await this.move(to, item.line.productId, item.quantityMilli, tx);
       }
 
@@ -220,7 +230,7 @@ export class StockTransferService {
 
   /**
    * Puts the goods back where they came from. Refused if the destination has
-   * since sold or moved them on, which the stock CHECK catches.
+   * since sold or moved them on and has insufficient warehouse stock.
    */
   async remove(user: User, id: number) {
     const transfer = await this.findOne(user, id);

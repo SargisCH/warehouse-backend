@@ -304,6 +304,9 @@ export class ProductRepository {
     products: { productId: number | string; quantity: number }[];
   }) {
     try {
+      if (products.some((product) => Number(product.quantity) < 0)) {
+        throw new Error('Manual warehouse quantities must be nonnegative');
+      }
       await this.db.transaction(async (tx) => {
         const productsToUpsert = products.map((product) => ({
           warehouseId: Number(warehouseId),

@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsIn,
   IsInt,
@@ -65,6 +66,11 @@ export class CreateStockTransferDto {
 
   @ApiPropertyOptional() @IsOptional() @IsInt() priceListId?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() note?: string;
+
+  @ApiPropertyOptional({ description: 'Confirm negative source stock for a warehouse transfer.' })
+  @IsOptional()
+  @IsBoolean()
+  allowNegativeStock?: boolean;
 
   @ApiProperty({ type: [StockTransferItemDto] })
   @IsArray()
