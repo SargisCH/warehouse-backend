@@ -4,7 +4,10 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
 import * as schema from 'src/drizzle/schema';
 
-type User = schema.User & { tenant?: schema.Tenant; role?: string };
+type User = schema.User & {
+  tenant?: Pick<schema.Tenant, 'id' | 'name'>;
+  role?: string;
+};
 type UserInsert = schema.UserInsert;
 
 @Injectable()
@@ -25,13 +28,13 @@ export class UserRepository {
       return {
         ...user,
         role: role.name,
-        tenant: { ...tenant },
+        tenant: { id: tenant.id, name: tenant.name },
       };
     }
     if (tenant) {
       return {
         ...user,
-        tenant: { ...tenant },
+        tenant: { id: tenant.id, name: tenant.name },
       };
     }
     if (role) {

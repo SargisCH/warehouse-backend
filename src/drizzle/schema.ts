@@ -50,7 +50,76 @@ export const userRole = pgTable('user_role', {
 export const tenant = pgTable('tenants', {
   id: serial('id').primaryKey(),
   name: text('name'),
+  companyCashStartedAt: timestamp('company_cash_started_at', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  companyCashOpening: numeric('company_cash_opening', {
+    precision: 14,
+    scale: 2,
+  }),
 });
+
+export const companyAssets = pgTable(
+  'company_assets',
+  {
+    id: uuid('id').primaryKey(),
+    tenantId: integer('tenant_id')
+      .notNull()
+      .references(() => tenant.id),
+    name: text('name').notNull(),
+    description: text('description'),
+    condition: text('condition').$type<'NEW' | 'USED'>().notNull(),
+    acquiredOn: date('acquired_on').notNull(),
+    purchasePrice: numeric('purchase_price', {
+      precision: 14,
+      scale: 2,
+    }).notNull(),
+    paidFromCash: boolean('paid_from_cash').notNull(),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    check('company_asset_condition', sql`${t.condition} IN ('NEW', 'USED')`),
+    check('company_asset_purchase_price', sql`${t.purchasePrice} >= 0`),
+  ],
+);
+
+export const companyAssetEntries = pgTable(
+  'company_asset_entries',
+  {
+    id: uuid('id').primaryKey(),
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => companyAssets.id),
+    kind: text('kind').$type<'REPAIR' | 'SALE' | 'REFUND'>().notNull(),
+    documentDate: date('document_date').notNull(),
+    description: text('description').notNull(),
+    amount: numeric('amount', { precision: 14, scale: 2 }).notNull(),
+    affectsCash: boolean('affects_cash').notNull(),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    check(
+      'company_asset_entry_kind',
+      sql`${t.kind} IN ('REPAIR', 'SALE', 'REFUND')`,
+    ),
+    check('company_asset_entry_amount', sql`${t.amount} > 0`),
+    uniqueIndex('company_asset_single_sale')
+      .on(t.assetId)
+      .where(sql`${t.kind} = 'SALE'`),
+  ],
+);
 
 export const units = pgTable('units', {
   id: serial('id').primaryKey(),
