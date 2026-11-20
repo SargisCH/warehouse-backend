@@ -31,9 +31,10 @@ class SupplyProductDto {
 
 // «Ապրանքների մուտք»
 export class CreateSupplyDto {
-  @ApiProperty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsInt()
-  documentId: number;
+  documentId?: number;
 
   @ApiProperty()
   @IsInt()
