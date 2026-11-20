@@ -77,6 +77,11 @@ export class CreateSaleDto {
   @IsNumberString()
   paidAmount?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  cashCollectedByManager?: boolean;
+
   @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsString()
@@ -104,6 +109,16 @@ export class PaySaleDto {
   @IsOptional()
   @IsNumberString()
   amount?: string;
+
+  @ApiPropertyOptional({ enum: ['CASH', 'TRANSFER'] })
+  @IsOptional()
+  @IsIn(['CASH', 'TRANSFER'])
+  paymentType?: 'CASH' | 'TRANSFER';
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  cashCollectedByManager?: boolean;
 
   @ApiPropertyOptional({ nullable: true })
   @IsOptional()

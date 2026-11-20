@@ -105,6 +105,7 @@ export class SaleRepository {
       note: schema.sales.note,
       totalAmount: schema.sales.totalAmount,
       paidAmount: schema.sales.paidAmount,
+      cashCollectedByManager: schema.sales.cashCollectedByManager,
       isReturn: schema.sales.isReturn,
       externalStatus: schema.sales.externalStatus,
       tenantId: schema.sales.tenantId,
