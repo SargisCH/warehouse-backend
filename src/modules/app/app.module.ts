@@ -25,6 +25,7 @@ import { ClientModule } from '../client/client.module';
 import { SaleModule } from '../sale/sale.module';
 import { PaymentModule } from '../payment/payment.module';
 import { StockTransferModule } from '../stock_transfer/stock_transfer.module';
+import { CompanyAssetsModule } from '../companyAssets/companyAssets.module';
 import { ReportModule } from '../report/report.module';
 import { AssistantModule } from '../assistant/assistant.module';
 
@@ -50,6 +51,7 @@ import { AssistantModule } from '../assistant/assistant.module';
     PaymentModule,
     StockTransferModule,
     ReportModule,
+    CompanyAssetsModule,
     AssistantModule,
   ],
   controllers: [AppController],
