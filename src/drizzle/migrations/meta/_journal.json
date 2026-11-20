@@ -134,6 +134,13 @@
       "when": 1795212600000,
       "tag": "0018_company_assets",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795213200000,
+      "tag": "0019_warehouse_negative_stock",
+      "breakpoints": true
     }
   ]
 }

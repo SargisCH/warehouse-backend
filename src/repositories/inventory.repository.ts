@@ -1,49 +1,51 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
+import { Injectable } from '@nestjs/common';
 import * as schema from 'src/drizzle/schema';
 import { and, eq, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { toMilli } from 'src/shared/helpers/money';
 
 type Executor = NodePgDatabase<typeof schema>;
+
+export class WarehouseStockShortage extends Error {}
 
 /** Warehouse stock («Պահեստ»), counterpart of ManagerStockRepository. */
 @Injectable()
 export class InventoryRepository {
-  constructor(
-    @Inject(DrizzleAsyncProvider)
-    private db: NodePgDatabase<typeof schema>,
-  ) {}
-
-  /**
-   * Moves stock by `delta`. Update first, insert only when the warehouse has
-   * never held the product: an upsert would test the CHECK against the raw
-   * negative delta. The CHECK `amount_is_non_negative` refuses an overdraw.
-   */
   async adjust(
     warehouseId: number,
     productId: number,
     delta: string,
     tx: Executor,
+    allowNegative = false,
   ): Promise<void> {
-    const updated = await tx
-      .update(schema.inventory)
-      .set({ quantity: sql`${schema.inventory.quantity} + ${delta}::numeric` })
-      .where(
-        and(
-          eq(schema.inventory.warehouseId, warehouseId),
-          eq(schema.inventory.productId, productId),
-        ),
-      )
-      .returning({ productId: schema.inventory.productId });
-    if (updated.length) return;
+    const { inventory } = schema;
+    const nextQuantity = sql`${inventory.quantity} + ${delta}::numeric`;
+    if (!allowNegative && toMilli(delta) < 0n) {
+      // The condition is checked under the update's row lock, including when
+      // another transfer has just debited the same stock.
+      const updated = await tx
+        .update(inventory)
+        .set({ quantity: nextQuantity })
+        .where(
+          and(
+            eq(inventory.warehouseId, warehouseId),
+            eq(inventory.productId, productId),
+            sql`${nextQuantity} >= 0`,
+          ),
+        )
+        .returning({ productId: inventory.productId });
+      if (!updated.length) throw new WarehouseStockShortage();
+      return;
+    }
+
+    // Credits can replenish negative stock. An authorized debit can also
+    // create a negative row for an item never stocked in this warehouse.
     await tx
-      .insert(schema.inventory)
-      .values({ warehouseId, productId, quantity: delta });
+      .insert(inventory)
+      .values({ warehouseId, productId, quantity: delta })
+      .onConflictDoUpdate({
+        target: [inventory.productId, inventory.warehouseId],
+        set: { quantity: nextQuantity },
+      });
   }
 }
-
-/** Whether an error is the warehouse stock CHECK constraint tripping. */
-export const isStockShortage = (e: any) =>
-  String(e?.cause?.constraint ?? e?.constraint).includes(
-    'amount_is_non_negative',
-  );

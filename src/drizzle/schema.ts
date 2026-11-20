@@ -203,7 +203,6 @@ export const inventory = pgTable(
   },
   (t) => [
     uniqueIndex('product_warehouse_id').on(t.productId, t.warehouseId),
-    check('amount_is_non_negative', sql`${t.quantity} >= 0`),
   ],
 );
 
