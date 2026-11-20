@@ -3,6 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import {
+  assertCashHandoversCovered,
+  lockManagerCash,
+} from 'src/repositories/managerCash.repository';
 import { User } from 'src/drizzle/schema';
 import {
   BALANCE_KIND,
@@ -234,6 +238,11 @@ export class PaymentService {
 
     return this.paymentRepository.transaction(async (tx) => {
       await this.balanceRepository.lockClient(payment.clientId, tx);
+      const managerId = payment.managerId;
+      const cash =
+        managerId && payment.kind === 'IN' && payment.paymentType === 'CASH'
+          ? await lockManagerCash(tx, user.tenantId, managerId)
+          : undefined;
       if (
         payment.kind === 'IN' &&
         (await this.creditRepository.isSpentElsewhere({ paymentId: id }, tx))
@@ -263,6 +272,19 @@ export class PaymentService {
         );
       }
       await this.paymentRepository.deletePayment(id, tx);
+      if (
+        managerId &&
+        cash &&
+        payment.createdAt >= cash.startedAt &&
+        payment.documentDate >= cash.startedAt.toISOString().slice(0, 10)
+      ) {
+        await assertCashHandoversCovered(
+          tx,
+          user.tenantId,
+          managerId,
+          payment.documentDate,
+        );
+      }
       return { id };
     });
   }

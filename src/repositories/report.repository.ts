@@ -315,21 +315,6 @@ export class ReportRepository {
    * «Ըստ մենեջերի մնացորդներ»: what each agent's buyers owe in total, as of a
    * date. Buyers with no agent are grouped under a null row.
    */
-  async managerBalances(tenantId: number, date: string) {
-    const rows = await this.db.execute(sql`
-      SELECT m.id AS "managerId", m.code AS "managerCode", m.name AS "managerName",
-             sum(b.amount)::numeric(14,2) AS balance
-      ${BALANCE_ENTRIES}
-      JOIN clients c ON c.id = b.client_id
-      LEFT JOIN managers m ON m.id = c.manager_id
-      WHERE b.tenant_id = ${tenantId} AND ${ENTRY_DATE} <= ${date}
-      GROUP BY m.id, m.code, m.name
-      HAVING sum(b.amount) <> 0
-      ORDER BY m.code NULLS LAST
-    `);
-    return rows.rows;
-  }
-
   /** «Ըստ մենեջերի ապրանքի մնացորդ»: what each deliverer's van holds. */
   async managerStock(
     tenantId: number,

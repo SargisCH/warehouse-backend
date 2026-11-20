@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Post,
   Query,
@@ -10,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { User } from 'src/drizzle/schema';
+import { ADMIN_ROLE } from '../auth/auth.constants';
 import { AuthGuard } from 'src/modules/auth/auth.guard';
 import { AuthUser } from 'src/modules/auth/auth.user.decorator';
 import {
@@ -59,7 +61,11 @@ export class ReportController {
 
   // «Ըստ մենեջերի մնացորդներ»
   @Get('manager-balances')
-  managerBalances(@AuthUser() user: User, @Query() query: BalancesQueryDto) {
+  managerBalances(
+    @AuthUser() user: User & { role?: string },
+    @Query() query: BalancesQueryDto,
+  ) {
+    if (user.role?.toLowerCase() !== ADMIN_ROLE) throw new ForbiddenException();
     return this.reportService.managerBalances(user, query);
   }
 

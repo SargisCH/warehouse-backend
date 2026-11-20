@@ -329,6 +329,9 @@ export const managers = pgTable(
     tenantId: integer('tenant_id')
       .notNull()
       .references(() => tenant.id),
+    cashTrackingStartedAt: timestamp('cash_tracking_started_at', {
+      withTimezone: true,
+    }).notNull().defaultNow(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -491,6 +494,9 @@ export const sales = pgTable(
     paidAmount: numeric('paid_amount', { precision: 14, scale: 2 })
       .notNull()
       .default('0'),
+    cashCollectedByManager: boolean('cash_collected_by_manager')
+      .notNull()
+      .default(false),
     isReturn: boolean('is_return').notNull().default(false),
     // «Այլ համակարգ ուղարկման վիճակ». Nothing writes this yet; the column is
     // here so the list filter has something to read.
@@ -589,6 +595,26 @@ export const payments = pgTable(
   (t) => [
     uniqueIndex('payments_tenant_code').on(t.tenantId, t.code),
     check('payment_amount_is_positive', sql`${t.amount} > 0`),
+  ],
+);
+
+export const managerCashEntries = pgTable(
+  'manager_cash_entries',
+  {
+    id: uuid('id').primaryKey(),
+    managerId: integer('manager_id').notNull().references(() => managers.id),
+    kind: text('kind').$type<'OPENING' | 'RECEIPT'>().notNull(),
+    documentDate: date('document_date').notNull(),
+    amount: numeric('amount', { precision: 14, scale: 2 }).notNull(),
+    note: text('note'),
+    createdBy: uuid('created_by').notNull().references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('manager_cash_entry_amount', sql`(${t.kind} = 'OPENING' AND ${t.amount} >= 0) OR (${t.kind} = 'RECEIPT' AND ${t.amount} > 0)`),
+    uniqueIndex('manager_cash_one_opening')
+      .on(t.managerId)
+      .where(sql`${t.kind} = 'OPENING'`),
   ],
 );
 

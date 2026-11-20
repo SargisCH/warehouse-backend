@@ -1,3 +1,4 @@
+import { ManagerCashRepository } from 'src/repositories/managerCash.repository';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { User } from 'src/drizzle/schema';
 import { ClientRepository } from 'src/repositories/client.repository';
@@ -26,6 +27,7 @@ const sumQuantity = (rows: any[], key: string) =>
 export class ReportService {
   constructor(
     private readonly reportRepository: ReportRepository,
+    private readonly managerCashRepository: ManagerCashRepository,
     private readonly clientRepository: ClientRepository,
   ) {}
 
@@ -154,7 +156,7 @@ export class ReportService {
 
   async managerBalances(user: User, query: BalancesQueryDto) {
     const date = query.date ?? today();
-    const rows = await this.reportRepository.managerBalances(
+    const rows = await this.managerCashRepository.balances(
       user.tenantId,
       date,
     );

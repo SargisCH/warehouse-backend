@@ -4,6 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  assertCashHandoversCovered,
+  lockManagerCash,
+} from 'src/repositories/managerCash.repository';
+import {
   SaleListOptions,
   SaleRepository,
 } from 'src/repositories/sale.repository';
@@ -215,6 +219,10 @@ export class SaleService {
               note: dto.note ?? null,
               totalAmount: fromMinor(total),
               paidAmount: fromMinor(paid),
+              cashCollectedByManager:
+                !isReturn &&
+                paymentType !== 'TRANSFER' &&
+                (dto.cashCollectedByManager ?? paymentType === 'CASH'),
               isReturn,
               tenantId: user.tenantId,
             },
@@ -367,6 +375,10 @@ export class SaleService {
 
     return this.saleRepository.transaction(async (tx) => {
       await this.balanceRepository.lockClient(sale.clientId, tx);
+      const cash =
+        sale.cashCollectedByManager && toMinor(sale.paidAmount) > 0n
+          ? await lockManagerCash(tx, sale.tenantId, sale.managerId)
+          : undefined;
       if (
         sale.isReturn &&
         (await this.creditRepository.isSpentElsewhere({ returnId: id }, tx))
@@ -420,6 +432,14 @@ export class SaleService {
       // The FK is ON DELETE SET NULL, so those entries survive with their link
       // cleared and the note above is what ties them to the removed document.
       await this.saleRepository.delete(id, tx);
+      if (cash && sale.createdAt >= cash.startedAt) {
+        await assertCashHandoversCovered(
+          tx,
+          sale.tenantId,
+          sale.managerId,
+          sale.documentDate,
+        );
+      }
       return { id };
     });
   }
@@ -451,11 +471,16 @@ export class SaleService {
       );
     }
 
+    const paymentType = dto.paymentType ?? sale.paymentType;
+    const paidDirectly =
+      dto.cashCollectedByManager === false ||
+      (dto.cashCollectedByManager === true && paymentType !== 'CASH');
+    const managerId = paidDirectly ? null : sale.managerId;
     return this.paymentService.create(user, {
       clientId: sale.clientId,
-      managerId: sale.managerId,
+      managerId,
       salesZoneId: sale.salesZoneId,
-      paymentType: sale.paymentType,
+      paymentType,
       amount: fromMinor(amount),
       note: dto.note ?? null,
       allocations: [{ saleId: id, amount: fromMinor(amount) }],
