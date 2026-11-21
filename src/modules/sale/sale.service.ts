@@ -301,9 +301,17 @@ export class SaleService {
       this.saleRepository.findByTenant(user.tenantId, scoped),
       this.saleRepository.totals(user.tenantId, scoped),
     ]);
-    const settled = await this.creditRepository.settledBySale(
-      rows.map((row) => row.id),
-    );
+    const saleIds = rows.map((row) => row.id);
+    const [settled, items] = await Promise.all([
+      this.creditRepository.settledBySale(saleIds),
+      this.saleRepository.itemsForSales(saleIds),
+    ]);
+    const itemsBySale = new Map<number, (typeof items)[number][]>();
+    for (const item of items) {
+      const saleItems = itemsBySale.get(item.saleId) ?? [];
+      saleItems.push(item);
+      itemsBySale.set(item.saleId, saleItems);
+    }
     let outstandingTotal = 0n;
     const withDebt = rows.map((row) => {
       const settledMinor =
@@ -313,6 +321,7 @@ export class SaleService {
       outstandingTotal += outstanding;
       return {
         ...row,
+        items: itemsBySale.get(row.id) ?? [],
         settledAmount: fromMinor(settledMinor),
         outstanding: fromMinor(outstanding),
       };
