@@ -103,9 +103,7 @@ export class PriceListService {
 
   /** The products that can be priced onto a list. */
   async availableProducts(searchTerm?: string) {
-    const { data } = await this.productRepository.findAll(
-      searchTerm ? { name: searchTerm } : {},
-    );
+    const { data } = await this.productRepository.findAll({ searchTerm });
     return data;
   }
 }

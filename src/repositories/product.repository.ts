@@ -4,8 +4,10 @@ import {
   count,
   eq,
   getTableColumns,
+  ilike,
   inArray,
   like,
+  or,
   sql,
 } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -61,6 +63,7 @@ export class ProductRepository {
   public async findAll(
     filter: {
       name?: string;
+      searchTerm?: string;
       forSale?: boolean;
       returnable?: boolean;
       fractional?: boolean;
@@ -72,6 +75,10 @@ export class ProductRepository {
     } = {},
   ) {
     let where = [];
+    if (filter.searchTerm) {
+      const pattern = `%${filter.searchTerm}%`;
+      where.push(or(ilike(this.table.name, pattern), ilike(this.table.sku, pattern)));
+    }
     if (filter.name) {
       where.push(like(this.table.name, `%${filter.name}%`));
     }
