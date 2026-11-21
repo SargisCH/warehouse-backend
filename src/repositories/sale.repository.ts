@@ -254,8 +254,15 @@ export class SaleRepository {
   }
 
   async itemsFor(saleId: number) {
+    const rows = await this.itemsForSales([saleId]);
+    return rows.map(({ saleId: _saleId, ...item }) => item);
+  }
+
+  async itemsForSales(saleIds: number[]) {
+    if (!saleIds.length) return [];
     return this.db
       .select({
+        saleId: schema.saleItems.saleId,
         id: schema.saleItems.id,
         productId: schema.saleItems.productId,
         productCode: schema.products.sku,
@@ -271,7 +278,7 @@ export class SaleRepository {
         eq(schema.saleItems.productId, schema.products.id),
       )
       .leftJoin(schema.units, eq(schema.products.unitId, schema.units.id))
-      .where(eq(schema.saleItems.saleId, saleId))
+      .where(inArray(schema.saleItems.saleId, saleIds))
       .orderBy(asc(schema.saleItems.id));
   }
 
