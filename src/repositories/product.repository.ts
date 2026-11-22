@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import {
   and,
   count,
@@ -13,6 +13,8 @@ import {
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
 import * as schema from 'src/drizzle/schema';
+import { fromMilli, toMilli, today } from 'src/shared/helpers/money';
+import { appendStockHistory } from './stock_history.repository';
 
 type ProductReturnType = schema.Product & { ingredients: schema.Ingredient[] };
 
@@ -303,49 +305,95 @@ export class ProductRepository {
       .delete(schema.products)
       .where(eq(schema.products.id, id));
   }
-  async move({
-    warehouseId,
-    products,
-  }: {
-    warehouseId: number | string;
-    products: { productId: number | string; quantity: number }[];
-  }) {
-    try {
-      if (products.some((product) => Number(product.quantity) < 0)) {
-        throw new Error('Manual warehouse quantities must be nonnegative');
-      }
-      await this.db.transaction(async (tx) => {
-        const productsToUpsert = products.map((product) => ({
-          warehouseId: Number(warehouseId),
-          productId: Number(product.productId),
-          quantity: String(product.quantity),
-        }));
-        await tx
-          .insert(this.inventoryTable)
-          .values(productsToUpsert)
-          .onConflictDoUpdate({
-            target: [
-              this.inventoryTable.productId,
-              this.inventoryTable.warehouseId,
-            ],
-            set: {
-              quantity: sql`excluded.quantity`,
-            },
-          });
-        await tx
-          .update(this.table)
-          .set({
-            updatedAt: sql`now()`,
-          })
-          .where(
-            inArray(
-              this.table.id,
-              products.map((p) => Number(p.productId)),
-            ),
-          );
-      });
-    } catch (e) {
-      console.log('Error', e);
+  async move(
+    body: {
+      warehouseId: number;
+      products: { productId: number | string; quantity: number }[];
+    },
+    tenantId: number,
+  ) {
+    const warehouseId = Number(body.warehouseId);
+    if (
+      !Number.isInteger(warehouseId) ||
+      warehouseId < 1 ||
+      !Array.isArray(body.products)
+    ) {
+      throw new BadRequestException('A warehouse and products are required');
     }
+    const products = body.products
+      .map((product) => {
+        const productId = Number(product.productId);
+        const quantity = String(product.quantity).trim();
+        if (
+          !Number.isInteger(productId) ||
+          productId < 1 ||
+          !quantity ||
+          !Number.isFinite(Number(quantity)) ||
+          Number(quantity) < 0
+        ) {
+          throw new BadRequestException(
+            'Invalid product or warehouse quantity',
+          );
+        }
+        return { productId, quantity };
+      })
+      .sort((a, b) => a.productId - b.productId);
+    if (
+      new Set(products.map(({ productId }) => productId)).size !==
+      products.length
+    ) {
+      throw new BadRequestException('A product may only appear on one line');
+    }
+    if (!products.length) return;
+
+    await this.db.transaction(async (tx) => {
+      const history: (typeof schema.stockHistory.$inferInsert)[] = [];
+      const documentDate = today();
+      for (const { productId, quantity } of products) {
+        // Initialize missing balances so concurrent adjustments and transfers
+        // contend on the same inventory row.
+        await tx
+          .insert(schema.inventory)
+          .values({ warehouseId, productId, quantity: '0' })
+          .onConflictDoNothing();
+        const key = and(
+          eq(schema.inventory.productId, productId),
+          eq(schema.inventory.warehouseId, warehouseId),
+        );
+        const [current] = await tx
+          .select({ quantity: schema.inventory.quantity })
+          .from(schema.inventory)
+          .where(key)
+          .for('update');
+        const [{ quantity: afterQuantity }] = await tx
+          .update(schema.inventory)
+          .set({ quantity })
+          .where(key)
+          .returning({ quantity: schema.inventory.quantity });
+        const delta = toMilli(afterQuantity) - toMilli(current.quantity);
+        if (delta === 0n) continue;
+        history.push({
+          tenantId,
+          productId,
+          kind: 'ADJUSTMENT',
+          documentDate,
+          quantity: fromMilli(delta < 0n ? -delta : delta),
+          beforeQuantity: current.quantity,
+          afterQuantity,
+          fromWarehouseId: delta < 0n ? warehouseId : null,
+          toWarehouseId: delta > 0n ? warehouseId : null,
+        });
+      }
+      await appendStockHistory(tx, history);
+      await tx
+        .update(this.table)
+        .set({ updatedAt: sql`now()` })
+        .where(
+          inArray(
+            this.table.id,
+            products.map(({ productId }) => productId),
+          ),
+        );
+    });
   }
 }

@@ -144,7 +144,7 @@ export class SaleController {
 
   // «Հեռացնել» - unwinds stock and balance along with the document.
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.saleService.remove(id);
+  remove(@AuthUser() user: User, @Param('id', ParseIntPipe) id: number) {
+    return this.saleService.remove(id, user.tenantId);
   }
 }

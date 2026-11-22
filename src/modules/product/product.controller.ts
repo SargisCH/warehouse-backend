@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Param,
   Controller,
@@ -13,6 +14,8 @@ import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { ProductService } from './product.service';
 import { ProductDTO, UpdateProductDto } from './product.dto';
+import { User } from 'src/drizzle/schema';
+import { AuthUser } from '../auth/auth.user.decorator';
 import { AuthGuard } from '../auth/auth.guard';
 
 @ApiTags('product')
@@ -82,13 +85,16 @@ export class ProductController {
   @ApiOperation({ description: 'Move to another warehouse' })
   @Post('/move')
   async move(
+    @AuthUser() user: User,
     @Body()
     body: {
       warehouseId: number;
       products: { productId: number | string; quantity: number }[];
     },
   ): Promise<{ message: string }> {
-    await this.productService.move(body);
+    if (user.tenantId == null)
+      throw new BadRequestException('Tenant is required');
+    await this.productService.move(body, user.tenantId);
     return {
       message: 'Product moved successfully',
     };

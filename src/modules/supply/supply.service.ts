@@ -12,7 +12,7 @@ export class SupplyService {
     private priceListRepository: PriceListRepository,
   ) {}
 
-  async create(dto: CreateSupplyDto) {
+  async create(dto: CreateSupplyDto, tenantId: number) {
     const productIds = dto.products.map((product) => product.productId);
     if (new Set(productIds).size !== productIds.length) {
       throw new BadRequestException('A product may only appear on one line');
@@ -37,6 +37,7 @@ export class SupplyService {
         total: item.amount,
       })),
       fromMinor(total),
+      tenantId,
     );
   }
 

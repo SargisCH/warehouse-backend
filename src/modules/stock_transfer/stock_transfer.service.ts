@@ -17,6 +17,7 @@ import {
   StockTransferListOptions,
   StockTransferRepository,
 } from 'src/repositories/stock_transfer.repository';
+import { recordTransferStockHistory } from 'src/repositories/stock_history.repository';
 import { WarehouseRepository } from 'src/repositories/warehouse.repository';
 import { withDocumentCode } from 'src/shared/helpers/document-code';
 import {
@@ -211,6 +212,14 @@ export class StockTransferService {
         })),
         tx,
       );
+      await recordTransferStockHistory(
+        tx,
+        transfer,
+        items.map(({ line, quantity }) => ({
+          productId: line.productId,
+          quantity,
+        })),
+      );
       return transfer;
     });
   }
@@ -233,20 +242,26 @@ export class StockTransferService {
    * since sold or moved them on and has insufficient warehouse stock.
    */
   async remove(user: User, id: number) {
-    const transfer = await this.findOne(user, id);
-    const from: Holder = transfer.fromWarehouseId
-      ? { warehouseId: transfer.fromWarehouseId }
-      : { managerId: transfer.fromManagerId };
-    const to: Holder = transfer.toWarehouseId
-      ? { warehouseId: transfer.toWarehouseId }
-      : { managerId: transfer.toManagerId };
-
     return this.transferRepository.transaction(async (tx) => {
-      for (const item of transfer.items) {
+      const transfer = await this.transferRepository.lockForRemoval(
+        id,
+        user.tenantId,
+        tx,
+      );
+      const items = await this.transferRepository.itemsFor(id, tx);
+      const from: Holder = transfer.fromWarehouseId
+        ? { warehouseId: transfer.fromWarehouseId }
+        : { managerId: transfer.fromManagerId };
+      const to: Holder = transfer.toWarehouseId
+        ? { warehouseId: transfer.toWarehouseId }
+        : { managerId: transfer.toManagerId };
+
+      for (const item of items) {
         const quantity = toMilli(item.quantity);
         await this.move(to, item.productId, -quantity, tx);
         await this.move(from, item.productId, quantity, tx);
       }
+      await recordTransferStockHistory(tx, transfer, items, true);
       await this.transferRepository.delete(id, tx);
       return { id };
     });

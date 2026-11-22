@@ -11,6 +11,7 @@ import {
   SaleListOptions,
   SaleRepository,
 } from 'src/repositories/sale.repository';
+import { recordSaleStockHistory } from 'src/repositories/stock_history.repository';
 import { ManagerStockRepository } from 'src/repositories/manager_stock.repository';
 import { PriceListRepository } from 'src/repositories/price_list.repository';
 import { ClientRepository } from 'src/repositories/client.repository';
@@ -241,6 +242,8 @@ export class SaleService {
         tx,
       );
 
+      await recordSaleStockHistory(tx, sale, items);
+
       // A sale adds the unpaid part to «պարտք»; a return takes the whole value
       // back off the account, so an overpaid buyer ends up in «կանխավճար»
       // rather than having money pulled out of a balance they never had.
@@ -376,14 +379,15 @@ export class SaleService {
    * no longer exists, so the account would read a balance its own entries do
    * not add up to.
    */
-  async remove(id: number) {
+  async remove(id: number, tenantId: number) {
     const sale = await this.saleRepository.findById(id);
-    if (!sale) {
+    if (!sale || sale.tenantId !== tenantId) {
       throw new NotFoundException('Sale not found');
     }
 
     return this.saleRepository.transaction(async (tx) => {
       await this.balanceRepository.lockClient(sale.clientId, tx);
+      await this.saleRepository.lockForRemoval(id, tx);
       const cash =
         sale.cashCollectedByManager && toMinor(sale.paidAmount) > 0n
           ? await lockManagerCash(tx, sale.tenantId, sale.managerId)
@@ -415,6 +419,8 @@ export class SaleService {
           tx,
         );
       }
+
+      await recordSaleStockHistory(tx, sale, items, true);
 
       // Everything this document did to the account, including any «վճարում»
       // posted against it afterwards.

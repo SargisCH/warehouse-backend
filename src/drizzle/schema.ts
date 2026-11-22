@@ -2,6 +2,7 @@ import {
   AnyPgColumn,
   date,
   integer,
+  index,
   serial,
   text,
   pgTable,
@@ -823,6 +824,54 @@ export const stockTransferItems = pgTable(
   },
   (t) => [
     check('stock_transfer_item_quantity_is_positive', sql`${t.quantity} > 0`),
+  ],
+);
+
+// Keep document identifiers after the source document has been deleted.
+export const stockHistory = pgTable(
+  'stock_history',
+  {
+    id: serial('id').primaryKey(),
+    tenantId: integer('tenant_id')
+      .notNull()
+      .references(() => tenant.id),
+    productId: integer('product_id').notNull(),
+    kind: text('kind').notNull(),
+    quantity: numeric('quantity', { precision: 15, scale: 3 }).notNull(),
+    documentDate: date('document_date').notNull(),
+    documentId: integer('document_id'),
+    documentCode: text('document_code'),
+    reversed: boolean('reversed').notNull().default(false),
+    fromWarehouseId: integer('from_warehouse_id'),
+    toWarehouseId: integer('to_warehouse_id'),
+    fromManagerId: integer('from_manager_id'),
+    toManagerId: integer('to_manager_id'),
+    beforeQuantity: numeric('before_quantity', { precision: 14, scale: 3 }),
+    afterQuantity: numeric('after_quantity', { precision: 14, scale: 3 }),
+    recordedAt: timestamp('recorded_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index('stock_history_product').on(
+      t.tenantId,
+      t.productId,
+      t.documentDate,
+      t.id,
+    ),
+    index('stock_history_from_warehouse').on(
+      t.tenantId,
+      t.fromWarehouseId,
+      t.documentDate,
+      t.id,
+    ),
+    index('stock_history_to_warehouse').on(
+      t.tenantId,
+      t.toWarehouseId,
+      t.documentDate,
+      t.id,
+    ),
+    check('stock_history_positive_quantity', sql`${t.quantity} > 0`),
   ],
 );
 
