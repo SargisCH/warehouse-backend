@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
 import * as schema from 'src/drizzle/schema';
 import { Sale, SaleInsert, SaleItem } from 'src/drizzle/schema';
@@ -68,12 +68,9 @@ export type SaleRow = Sale & {
 };
 
 // The deliverer is a manager too, so it needs its own alias.
-const deliverer = alias(schema.managers, 'deliverer') as typeof schema.managers;
+const deliverer = alias(schema.managers, 'deliverer');
 // The buyer's own zone is a different link from the one stamped on the sale.
-const clientZone = alias(
-  schema.salesZones,
-  'client_zone',
-) as typeof schema.salesZones;
+const clientZone = alias(schema.salesZones, 'client_zone');
 
 const SORTABLE = {
   code: schema.sales.code,
@@ -344,6 +341,15 @@ export class SaleRepository {
       .select()
       .from(schema.saleItems)
       .where(eq(schema.saleItems.saleId, saleId));
+  }
+
+  async lockForRemoval(id: number, tx: NodePgDatabase<typeof schema>) {
+    const [sale] = await tx
+      .select({ id: schema.sales.id })
+      .from(schema.sales)
+      .where(eq(schema.sales.id, id))
+      .for('update');
+    if (!sale) throw new NotFoundException('Sale not found');
   }
 
   // Sale items and balance entries both cascade from the sale row.

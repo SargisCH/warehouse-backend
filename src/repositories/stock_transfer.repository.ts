@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
 import * as schema from 'src/drizzle/schema';
 import { StockTransfer, StockTransferInsert } from 'src/drizzle/schema';
@@ -21,14 +21,8 @@ export type StockTransferListOptions = {
 
 const fromWarehouse = alias(schema.warehouses, 'from_warehouse');
 const toWarehouse = alias(schema.warehouses, 'to_warehouse');
-const fromManager = alias(
-  schema.managers,
-  'from_manager',
-) as typeof schema.managers;
-const toManager = alias(
-  schema.managers,
-  'to_manager',
-) as typeof schema.managers;
+const fromManager = alias(schema.managers, 'from_manager');
+const toManager = alias(schema.managers, 'to_manager');
 
 @Injectable()
 export class StockTransferRepository {
@@ -177,6 +171,21 @@ export class StockTransferRepository {
     await tx
       .insert(schema.stockTransferItems)
       .values(items.map((item) => ({ ...item, transferId })));
+  }
+
+  async lockForRemoval(id: number, tenantId: number, tx: Executor) {
+    const [transfer] = await tx
+      .select()
+      .from(schema.stockTransfers)
+      .where(
+        and(
+          eq(schema.stockTransfers.id, id),
+          eq(schema.stockTransfers.tenantId, tenantId),
+        ),
+      )
+      .for('update');
+    if (!transfer) throw new NotFoundException('Transfer not found');
+    return transfer;
   }
 
   async delete(id: number, tx: Executor): Promise<void> {

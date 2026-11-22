@@ -9,11 +9,15 @@ import { UserRepository } from 'src/repositories/user.repository';
 import { TenantRepository } from 'src/repositories/tenant.repository';
 import { UserRoleRepository } from 'src/repositories/userRole.repository';
 
+import { StockHistoryRepository } from 'src/repositories/stock_history.repository';
+import { StockHistoryController } from './stock_history.controller';
+
 @Module({
   imports: [DrizzleModule],
-  controllers: [ProductController],
+  controllers: [ProductController, StockHistoryController],
   providers: [
     ProductRepository,
+    StockHistoryRepository,
     ProductService,
     UserRepository,
     UserService,

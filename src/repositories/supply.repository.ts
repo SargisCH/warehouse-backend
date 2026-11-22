@@ -5,6 +5,7 @@ import { Supply, SupplyInsert } from 'src/drizzle/schema';
 import { desc, eq, sql, or, ilike, inArray } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { CreateSupplyDto } from 'src/modules/supply/supply.dto';
+import { appendStockHistory } from './stock_history.repository';
 import { InventoryRepository } from './inventory.repository';
 
 @Injectable()
@@ -118,6 +119,7 @@ export class SupplyRepository {
       total: string;
     }>,
     totalAmount: string,
+    tenantId: number,
   ) {
     return this.db.transaction(async (tx) => {
       const [supply] = await tx
@@ -154,6 +156,19 @@ export class SupplyRepository {
         );
       }
 
+      await appendStockHistory(
+        tx,
+        lines.map(({ productId, amount }) => ({
+          tenantId,
+          productId,
+          quantity: amount,
+          kind: 'SUPPLY',
+          documentId: numbered.id,
+          documentCode: numbered.code,
+          documentDate: numbered.documentDate,
+          toWarehouseId: dto.warehouseId,
+        })),
+      );
       return numbered;
     });
   }

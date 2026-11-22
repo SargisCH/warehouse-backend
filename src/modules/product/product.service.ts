@@ -41,10 +41,13 @@ export class ProductService {
   async delete(id: number) {
     return this.productRepository.delete(id);
   }
-  async move(body: {
-    warehouseId: number;
-    products: { productId: number | string; quantity: number }[];
-  }) {
-    this.productRepository.move(body);
+  async move(
+    body: {
+      warehouseId: number;
+      products: { productId: number | string; quantity: number }[];
+    },
+    tenantId: number,
+  ) {
+    return this.productRepository.move(body, tenantId);
   }
 }
