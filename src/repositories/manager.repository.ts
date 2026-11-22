@@ -20,7 +20,7 @@ export type ManagerWithRelations = Manager & {
 };
 
 // The deliverer is another manager, so the self-join needs its own alias.
-const deliverer = alias(schema.managers, 'deliverer') as typeof schema.managers;
+const deliverer = alias(schema.managers, 'deliverer');
 
 const SORTABLE = {
   code: schema.managers.code,
@@ -47,6 +47,7 @@ export class ManagerRepository {
       salesZoneId: schema.managers.salesZoneId,
       delivererId: schema.managers.delivererId,
       tenantId: schema.managers.tenantId,
+      cashTrackingStartedAt: schema.managers.cashTrackingStartedAt,
       createdAt: schema.managers.createdAt,
       updatedAt: schema.managers.updatedAt,
       salesZoneName: schema.salesZones.name,

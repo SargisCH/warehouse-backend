@@ -18,14 +18,8 @@ export type SalesZoneWithRelations = SalesZone & {
   parentName: string | null;
 };
 
-// «Կուտակիչ» points at another sales zone, so the join needs its own alias. The
-// self-referencing FK makes drizzle infer the aliased table as `any`, so the
-// cast is what restores column typing; it does not change the emitted SQL,
-// which still qualifies these columns with "parent_zone".
-const parentZone = alias(
-  schema.salesZones,
-  'parent_zone',
-) as typeof schema.salesZones;
+// «Կուտակիչ» points at another sales zone, so the join needs its own alias.
+const parentZone = alias(schema.salesZones, 'parent_zone');
 
 const SORTABLE = {
   code: schema.salesZones.code,

@@ -68,12 +68,9 @@ export type SaleRow = Sale & {
 };
 
 // The deliverer is a manager too, so it needs its own alias.
-const deliverer = alias(schema.managers, 'deliverer') as typeof schema.managers;
+const deliverer = alias(schema.managers, 'deliverer');
 // The buyer's own zone is a different link from the one stamped on the sale.
-const clientZone = alias(
-  schema.salesZones,
-  'client_zone',
-) as typeof schema.salesZones;
+const clientZone = alias(schema.salesZones, 'client_zone');
 
 const SORTABLE = {
   code: schema.sales.code,

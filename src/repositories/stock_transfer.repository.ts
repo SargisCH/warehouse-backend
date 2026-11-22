@@ -21,14 +21,8 @@ export type StockTransferListOptions = {
 
 const fromWarehouse = alias(schema.warehouses, 'from_warehouse');
 const toWarehouse = alias(schema.warehouses, 'to_warehouse');
-const fromManager = alias(
-  schema.managers,
-  'from_manager',
-) as typeof schema.managers;
-const toManager = alias(
-  schema.managers,
-  'to_manager',
-) as typeof schema.managers;
+const fromManager = alias(schema.managers, 'from_manager');
+const toManager = alias(schema.managers, 'to_manager');
 
 @Injectable()
 export class StockTransferRepository {
