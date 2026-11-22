@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Put,
   UseGuards,
@@ -31,6 +32,12 @@ export class WarehouseController {
   @UseGuards(AuthGuard)
   async create(@Body() warehouse: WarehouseDTO) {
     return this.warehouseService.create(warehouse);
+  }
+
+  @Get(':id/stock')
+  @UseGuards(AuthGuard)
+  async getStock(@Param('id', ParseIntPipe) id: number) {
+    return this.warehouseService.findStock(id);
   }
 
   @Get(':id')
