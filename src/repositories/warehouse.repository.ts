@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq, ne } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
 import * as schema from 'src/drizzle/schema';
@@ -42,6 +42,34 @@ export class WarehouseRepository {
       with: { products: true },
     });
     return warehouse;
+  }
+
+  async findStock(id: number) {
+    const { inventory, products, units } = schema;
+    return this.db
+      .select({
+        warehouseId: this.table.id,
+        warehouseName: this.table.name,
+        product: {
+          id: products.id,
+          name: products.name,
+          sku: products.sku,
+        },
+        unit: { id: units.id, name: units.name },
+        quantity: inventory.quantity,
+      })
+      .from(this.table)
+      .leftJoin(
+        inventory,
+        and(
+          eq(inventory.warehouseId, this.table.id),
+          ne(inventory.quantity, '0'),
+        ),
+      )
+      .leftJoin(products, eq(products.id, inventory.productId))
+      .leftJoin(units, eq(units.id, products.unitId))
+      .where(eq(this.table.id, id))
+      .orderBy(asc(products.name), asc(products.id));
   }
 
   async create(warehouse: schema.WarehouseInsert) {
