@@ -306,7 +306,9 @@ export const salesZones = pgTable(
     code: varchar('code', { length: 16 }).notNull(),
     name: text('name').notNull(),
     // «Մենեջեր»: the agent responsible for the zone.
-    managerId: integer('manager_id').references(() => managers.id),
+    managerId: integer('manager_id').references(
+      (): AnyPgColumn => managers.id,
+    ),
     delivererId: integer('deliverer_id').references(
       (): AnyPgColumn => managers.id,
     ),
