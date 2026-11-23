@@ -62,6 +62,26 @@ export const tenant = pgTable('tenants', {
   }),
 });
 
+export const companyCashEntries = pgTable(
+  'company_cash_entries',
+  {
+    id: uuid('id').primaryKey(),
+    tenantId: integer('tenant_id').notNull().references(() => tenant.id),
+    documentDate: date('document_date').notNull(),
+    amount: numeric('amount', { precision: 14, scale: 2 }).notNull(),
+    description: text('description').notNull(),
+    comment: text('comment').notNull(),
+    returnOf: uuid('return_of').references((): AnyPgColumn => companyCashEntries.id),
+    createdBy: uuid('created_by').notNull().references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('company_cash_entries_tenant').on(t.tenantId),
+    uniqueIndex('company_cash_one_return').on(t.returnOf),
+    check('company_cash_entry_positive_amount', sql`${t.amount} > 0`),
+  ],
+);
+
 export const companyAssets = pgTable(
   'company_assets',
   {
