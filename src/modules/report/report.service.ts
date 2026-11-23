@@ -134,22 +134,13 @@ export class ReportService {
       date,
       filters,
     );
-    // Split the signed balance the way the ERP columns show it.
-    const split = rows.map((row: any) => {
-      const balance = toMinor(row.balance);
-      return {
-        ...row,
-        debt: fromMinor(balance > 0n ? balance : 0n),
-        prepayment: fromMinor(balance < 0n ? -balance : 0n),
-      };
-    });
     return {
       date,
-      rows: split,
+      rows,
       totals: {
-        balance: sumMoney(split, 'balance'),
-        debt: sumMoney(split, 'debt'),
-        prepayment: sumMoney(split, 'prepayment'),
+        balance: sumMoney(rows, 'balance'),
+        debt: sumMoney(rows, 'debt'),
+        prepayment: sumMoney(rows, 'prepayment'),
       },
     };
   }
