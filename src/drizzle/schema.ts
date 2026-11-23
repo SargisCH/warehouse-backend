@@ -175,7 +175,9 @@ export const ingredients = pgTable(
     ingredientId: integer('ingredient_id')
       .references(() => products.id)
       .notNull(),
-    quantity: integer('quantity').notNull().default(1),
+    quantity: numeric('quantity', { precision: 13, scale: 3 })
+      .notNull()
+      .default('1'),
     unitId: integer('unit_id'),
   },
   (t) => ({
