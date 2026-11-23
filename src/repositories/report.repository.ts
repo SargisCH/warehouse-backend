@@ -265,7 +265,7 @@ export class ReportRepository {
     };
   }
 
-  /** «Ըստ գնորդի մնացորդներ» as of a date, one row per buyer. */
+  /** «Ըստ գնորդի մնացորդներ»: open sale debt and unused credit as of a date. */
   async clientBalances(
     tenantId: number,
     date: string,
@@ -276,21 +276,47 @@ export class ReportRepository {
     },
   ) {
     const rows = await this.db.execute(sql`
+      WITH movements AS (
+        SELECT s.client_id,
+               CASE WHEN s.is_return THEN 0 ELSE s.total_amount - s.paid_amount END AS debt,
+               CASE WHEN s.is_return THEN s.total_amount ELSE 0 END AS credit
+        FROM sales s
+        WHERE s.tenant_id = ${tenantId} AND s.document_date <= ${date}
+        UNION ALL
+        SELECT p.client_id, 0, p.amount
+        FROM payments p
+        WHERE p.tenant_id = ${tenantId} AND p.kind = 'IN'
+          AND p.document_date <= ${date}
+        UNION ALL
+        SELECT coalesce(source_payment.client_id, source_return.client_id),
+               CASE WHEN a.target_sale_id IS NULL THEN 0 ELSE -a.amount END,
+               -a.amount
+        FROM credit_allocations a
+        LEFT JOIN payments source_payment ON source_payment.id = a.source_payment_id
+        LEFT JOIN sales source_return ON source_return.id = a.source_return_id
+        LEFT JOIN sales target_sale ON target_sale.id = a.target_sale_id
+        LEFT JOIN payments target_refund ON target_refund.id = a.target_refund_id
+        LEFT JOIN repayments r ON r.id = a.repayment_id
+        WHERE a.tenant_id = ${tenantId}
+          AND coalesce(source_payment.document_date, source_return.document_date) <= ${date}
+          AND coalesce(target_sale.document_date, target_refund.document_date) <= ${date}
+          AND (a.repayment_id IS NULL OR r.document_date <= ${date})
+      ), balances AS (
+        SELECT client_id, sum(debt)::numeric(14,2) AS debt,
+               sum(credit)::numeric(14,2) AS prepayment
+        FROM movements
+        GROUP BY client_id
+      )
       SELECT c.id AS "clientId", c.code AS "clientCode", c.name AS "clientName",
              cg.name AS "clientGroupName", m.code AS "managerCode",
              m.name AS "managerName", z.name AS "salesZoneName",
-             bal.balance
-      FROM (
-        SELECT b.client_id, sum(b.amount)::numeric(14,2) AS balance
-        ${BALANCE_ENTRIES}
-        WHERE b.tenant_id = ${tenantId} AND ${ENTRY_DATE} <= ${date}
-        GROUP BY b.client_id
-      ) bal
+             bal.debt, bal.prepayment, (bal.debt - bal.prepayment)::numeric(14,2) AS balance
+      FROM balances bal
       JOIN clients c ON c.id = bal.client_id
       LEFT JOIN client_groups cg ON cg.id = c.client_group_id
       LEFT JOIN managers m ON m.id = c.manager_id
       LEFT JOIN sales_zones z ON z.id = c.sales_zone_id
-      WHERE bal.balance <> 0
+      WHERE (bal.debt <> 0 OR bal.prepayment <> 0)
         ${
           filters.clientGroupId
             ? sql`AND c.client_group_id = ${filters.clientGroupId}`
