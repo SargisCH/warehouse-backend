@@ -167,13 +167,29 @@ export class StockTransferService {
 
     return this.transferRepository.transaction(async (tx) => {
       for (const item of items) {
-        await this.move(
-          from,
-          item.line.productId,
-          -item.quantityMilli,
-          tx,
-          dto.kind === 'WAREHOUSE' && dto.allowNegativeStock === true,
-        );
+        if (
+          dto.kind === 'RETURN' &&
+          dto.requireAvailableStock &&
+          'managerId' in from
+        ) {
+          const removed = await this.managerStock.removeAvailable(
+            from.managerId,
+            item.line.productId,
+            item.quantity,
+            tx,
+          );
+          if (!removed) {
+            throw new BadRequestException({ code: 'INSUFFICIENT_MANAGER_STOCK' });
+          }
+        } else {
+          await this.move(
+            from,
+            item.line.productId,
+            -item.quantityMilli,
+            tx,
+            dto.kind === 'WAREHOUSE' && dto.allowNegativeStock === true,
+          );
+        }
         await this.move(to, item.line.productId, item.quantityMilli, tx);
       }
 
