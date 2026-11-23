@@ -10,6 +10,7 @@ import {
   ValidateNested,
   ValidateIf,
   IsPositive,
+  Max,
 } from 'class-validator';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 
@@ -23,9 +24,9 @@ export class Ingredient {
   @ApiProperty()
   productId: number;
 
-  @IsNumber()
-  @IsNotEmpty({ message: 'Unit is required.' })
+  @IsNumber({ maxDecimalPlaces: 3 })
   @IsPositive()
+  @Max(9999999999.999)
   @ApiProperty()
   quantity: number;
 

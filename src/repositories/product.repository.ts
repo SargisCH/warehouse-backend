@@ -16,7 +16,10 @@ import * as schema from 'src/drizzle/schema';
 import { fromMilli, toMilli, today } from 'src/shared/helpers/money';
 import { appendStockHistory } from './stock_history.repository';
 
-type ProductReturnType = schema.Product & { ingredients: schema.Ingredient[] };
+type ProductIngredient = Omit<schema.Ingredient, 'quantity'> & {
+  quantity: number;
+};
+type ProductReturnType = schema.Product & { ingredients: ProductIngredient[] };
 
 // A group without its own code falls back to letters taken from its name.
 function prefixFromName(groupName: string) {
@@ -57,7 +60,13 @@ export class ProductRepository {
       where: eq(this.ingredientsTable.productId, product.id),
       with: { unit: true, products: true },
     });
-    return { ...product, ingredients };
+    return {
+      ...product,
+      ingredients: ingredients.map((ingredient) => ({
+        ...ingredient,
+        quantity: Number(ingredient.quantity),
+      })),
+    };
   }
   /**
    * Find all users in the database
@@ -217,7 +226,7 @@ export class ProductRepository {
 
   public async create(
     product: schema.ProductInsert & {
-      ingredients: Omit<schema.IngredientInsert, 'ingredientId'>[];
+      ingredients: Omit<ProductIngredient, 'ingredientId'>[];
     },
   ) {
     let productCreated;
@@ -242,7 +251,7 @@ export class ProductRepository {
         product.ingredients.map((ing) => ({
           productId: productCreated.id,
           ingredientId: ing.productId,
-          quantity: ing.quantity,
+          quantity: String(ing.quantity),
           unitId: ing.unitId,
         })),
       );
@@ -253,7 +262,7 @@ export class ProductRepository {
   public async update(
     id: number,
     product: schema.ProductInsert & {
-      ingredients: Omit<schema.IngredientInsert, 'ingredientId'>[];
+      ingredients: Omit<ProductIngredient, 'ingredientId'>[];
     },
   ) {
     const { ingredients, ...productData } = product;
@@ -289,7 +298,7 @@ export class ProductRepository {
         ingredients.map((ing) => ({
           productId: productUpdated.id,
           ingredientId: ing.productId,
-          quantity: ing.quantity,
+          quantity: String(ing.quantity),
           unitId: ing.unitId,
         })),
       );
