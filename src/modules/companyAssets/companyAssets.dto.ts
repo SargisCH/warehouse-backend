@@ -51,3 +51,20 @@ export class SetCompanyCashOpeningDto {
   @Matches(/^\d{1,12}(\.\d{1,2})?$/)
   amount: string;
 }
+
+export class CompanyCashEntryDto extends SetCompanyCashOpeningDto {
+  @IsUUID()
+  id: string;
+
+  @Matches(/\S/)
+  @MaxLength(2000)
+  description: string;
+
+  @Matches(/\S/)
+  @MaxLength(2000)
+  comment: string;
+
+  @IsOptional()
+  @IsUUID()
+  returnOf?: string;
+}

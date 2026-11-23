@@ -18,6 +18,7 @@ import { AuthUser } from '../auth/auth.user.decorator';
 import {
   AssetEntryDto,
   CreateAssetDto,
+  CompanyCashEntryDto,
   SetCompanyCashOpeningDto,
 } from './companyAssets.dto';
 import { CompanyAssetsService } from './companyAssets.service';
@@ -52,6 +53,18 @@ export class CompanyAssetsController {
   openCash(@AuthUser() user: AssetUser, @Body() dto: SetCompanyCashOpeningDto) {
     this.assertAdmin(user);
     return this.assets.setOpening(user.tenantId, dto.amount);
+  }
+
+  @Get('cash/history')
+  cashHistory(@AuthUser() user: AssetUser) {
+    this.assertAdmin(user);
+    return this.assets.cashHistory(user.tenantId);
+  }
+
+  @Post('cash/entries')
+  addCashEntry(@AuthUser() user: AssetUser, @Body() dto: CompanyCashEntryDto) {
+    this.assertAdmin(user);
+    return this.assets.addCashEntry(user.tenantId, user.id, dto);
   }
 
   @Get(':id')
