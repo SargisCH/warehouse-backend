@@ -111,4 +111,25 @@ export class ManagerStockRepository {
         set: { quantity },
       });
   }
+
+  async removeAvailable(
+    managerId: number,
+    productId: number,
+    quantity: string,
+    tx: Executor,
+  ): Promise<boolean> {
+    const stock = schema.managerStock;
+    const rows = await tx
+      .update(stock)
+      .set({ quantity: sql`${stock.quantity} - ${quantity}::numeric` })
+      .where(
+        and(
+          eq(stock.managerId, managerId),
+          eq(stock.productId, productId),
+          sql`${stock.quantity} >= ${quantity}::numeric`,
+        ),
+      )
+      .returning({ id: stock.id });
+    return rows.length > 0;
+  }
 }

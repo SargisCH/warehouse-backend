@@ -72,6 +72,11 @@ export class CreateStockTransferDto {
   @IsBoolean()
   allowNegativeStock?: boolean;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  requireAvailableStock?: boolean;
+
   @ApiProperty({ type: [StockTransferItemDto] })
   @IsArray()
   @ArrayMinSize(1)
